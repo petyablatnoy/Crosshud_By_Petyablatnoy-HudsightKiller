@@ -100,6 +100,7 @@ crosshud предоставляет тот же самый основной фу
 
 [перейти в discussions](https://github.com/petyablatnoy/crosshud_by_petyablatnoy/discussions)
 
+или телеграмм: @petyablatnoy
 
 ## для разработчиков
 
