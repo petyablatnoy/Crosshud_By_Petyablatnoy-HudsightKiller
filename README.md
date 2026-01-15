@@ -49,7 +49,7 @@ crosshud v3 — это полная переработка предыдущей 
 
 если вы нашли ошибку, у вас есть предложение по улучшению или вы просто хотите сказать спасибо.
 
-*   **сообщить об ошибке:** [создать issue](https://github.com/petyablatnoy/crosshud_by_petyablatnoy/issues)
+*   **сообщить об ошибке:** [создать issue](https://github.com/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller/issues)
 *   **telegram:** @petyablatnoy
 
 ---
