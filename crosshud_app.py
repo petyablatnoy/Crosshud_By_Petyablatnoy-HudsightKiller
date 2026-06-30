@@ -3,11 +3,11 @@ import os
 import logging
 import atexit
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PySide6.QtGui import QIcon, QAction, QPixmap
+from PySide6.QtGui import QIcon, QAction, QPixmap, QFont
 from PySide6.QtCore import Signal, QObject, Qt, QTimer
 from settings_manager import SettingsManager
 from overlay_manager import OverlayManager
-from ui_components import UIComponents
+from qml_ui import QmlWindowController
 from resolution_detector import ResolutionDetector
 
 class Signaler(QObject):
@@ -16,6 +16,7 @@ class Signaler(QObject):
 class CrossHudApp:
     def __init__(self):
         self.app = QApplication(sys.argv)
+        self.app.setFont(QFont("Segoe UI", 9))
         self.app.setQuitOnLastWindowClosed(False)
         self.main_icon = self.get_best_icon()
         self.app.setWindowIcon(self.main_icon)
@@ -24,8 +25,9 @@ class CrossHudApp:
         self.signaler = Signaler()
         self.signaler.toggle_trigger.connect(self.toggle_crosshair_logic)
         self.overlay = OverlayManager(self.settings, self.signaler.toggle_trigger.emit)
-        self.window = UIComponents(self.settings, self.overlay, self.main_icon)
+        self.window = QmlWindowController(self.settings, self.overlay, self.main_icon)
         self.window.notify_update.connect(self.show_notification)
+        self.window.exit_confirmed.connect(self._finish_exit)
         self.single_instance = None
         self.tray = None
         self.res = ResolutionDetector.get_resolution()
@@ -101,9 +103,10 @@ class CrossHudApp:
         self.overlay.request_recreation()
 
     def exit_app(self):
+        self.window.request_exit()
+
+    def _finish_exit(self):
         try:
-            if not self.window.confirm_save_custom_pixels_on_exit():
-                return
             self.overlay.cleanup()
         except Exception:
             logging.exception("Error while exiting CrossHud")

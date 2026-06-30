@@ -1,5 +1,3 @@
-import math
-import colorsys
 from threading import Timer, Lock, Event, Thread, current_thread
 from typing import Optional, List, Tuple
 import ctypes
@@ -8,10 +6,7 @@ import time
 import logging
 import queue
 import random
-try:
-    from PIL import Image, ImageDraw
-except ImportError:
-    Image = None
+from crosshair_renderer import opacity_byte, render_crosshair_bgra
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -338,109 +333,21 @@ class OverlayManager:
         self.render_event.set()
         self.command_queue.put(('refresh', None))
 
-    def hsv_to_rgb(self, h, s, v):
-        r, g, b = colorsys.hsv_to_rgb(h / 360.0, s, v)
-        return (int(r * 255), int(g * 255), int(b * 255))
-
-    def hex_to_rgb(self, h):
-        h = h.lstrip('#')
-        return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-
-    def get_current_color(self) -> Tuple[int, int, int]:
-        if self.settings_manager.get('rainbow_mode', False):
-            return self.hsv_to_rgb(self.rainbow_hue, 1.0, 1.0)
-        if self.settings_manager.get('dynamic_color', False):
-            pt = POINT()
-            if user32.GetCursorPos(ctypes.byref(pt)):
-                screen_w = self.settings_manager.get('screen_width', 1920)
-                if screen_w > 0:
-                    h = (pt.x / screen_w) * 360
-                    return self.hsv_to_rgb(h, 1.0, 1.0)
-        return self.hex_to_rgb(self.settings_manager.get('color', '#00FF00'))
-
     def draw_crosshair(self) -> None:
-        if not Image: return
         if not self.hwnd or not self.mem_dc or not self.is_visible: return
         try:
             sz = int(self.overlay_size)
             if sz <= 0: return
-            
-            s = self.settings_manager.get('size', 20.0)
-            g = self.settings_manager.get('gap', 4.0)
-            self.current_opacity = int(self.settings_manager.get('opacity', 1.0) * 255)
-            self.current_opacity = max(0, min(255, self.current_opacity))
-            
-            FULL_ALPHA = 255
-            
-            img = Image.new('RGBA', (sz, sz), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(img)
-            cx, cy = sz // 2, sz // 2
-            
-            if self.settings_manager.get('pixel_perfect', False) and self.settings_manager.get('custom_pixels', []):
-                for px, py, ch in self.settings_manager.get('custom_pixels', []):
-                    if self.settings_manager.get('rainbow_mode', False):
-                        dist = abs(px) + abs(py)
-                        rgb = self.hsv_to_rgb((self.rainbow_hue + dist * 10) % 360, 1.0, 1.0)
-                    else:
-                        rgb = self.hex_to_rgb(ch)
-                    ax = cx + px
-                    ay = cy + py
-                    if 0 <= ax < sz and 0 <= ay < sz:
-                        draw.point((ax, ay), fill=rgb + (FULL_ALPHA,))
-            else:
-                s = int(s)
-                t = int(self.settings_manager.get('thickness', 2.0))
-                g = int(g)
-                
-                c = self.get_current_color()
-                fc = c + (FULL_ALPHA,)
-                
-                oe = self.settings_manager.get('outline_enabled', False)
-                ow = int(self.settings_manager.get('outline_width', 1.0))
-                oc = self.hex_to_rgb(self.settings_manager.get('outline_color', '#000000')) + (FULL_ALPHA,)
-                
-                inner = g
-                outer = g + s
-                
-                max_reach = sz // 2
-                if outer > max_reach:
-                    outer = max_reach
-                    if inner > outer: inner = outer 
 
-                should_draw_arms = outer > inner
-
-                t_half = t // 2
-                perp_start = -t_half
-                perp_end = perp_start + t - 1
-
-                if should_draw_arms:
-                    def draw_box(x0, y0, x1, y1):
-                        if x0 > x1: x0, x1 = x1, x0
-                        if y0 > y1: y0, y1 = y1, y0
-                        if oe and ow > 0:
-                            draw.rectangle([x0 - ow, y0 - ow, x1 + ow, y1 + ow], fill=oc)
-                        draw.rectangle([x0, y0, x1, y1], fill=fc)
-
-                    draw_box(cx + perp_start, cy - outer, cx + perp_end, cy - inner)
-                    draw_box(cx + perp_start, cy + inner, cx + perp_end, cy + outer)
-                    draw_box(cx - outer, cy + perp_start, cx - inner, cy + perp_end)
-                    draw_box(cx + inner, cy + perp_start, cx + outer, cy + perp_end)
-
-                if self.settings_manager.get('center_dot', False):
-                    ds = int(self.settings_manager.get('center_dot_size', 2.0))
-                    dc = self.hsv_to_rgb((self.rainbow_hue + 180) % 360, 1.0, 1.0) if self.settings_manager.get('rainbow_mode', False) else self.hex_to_rgb(self.settings_manager.get('center_dot_color', '#FF0000'))
-                    df = dc + (FULL_ALPHA,)
-                    r = ds // 2
-                    d_x0 = cx - r
-                    d_y0 = cy - r
-                    d_x1 = d_x0 + ds - 1
-                    d_y1 = d_y0 + ds - 1
-                    if oe and ow > 0:
-                        draw.ellipse([d_x0 - ow, d_y0 - ow, d_x1 + ow, d_y1 + ow], fill=oc)
-                    draw.ellipse([d_x0, d_y0, d_x1, d_y1], fill=df)
-
-            r, g, b, a = img.split()
-            data = Image.merge("RGBA", (b, g, r, a)).tobytes()
+            dynamic_x = None
+            if self.settings_manager.get('dynamic_color', False):
+                pt = POINT()
+                if user32.GetCursorPos(ctypes.byref(pt)):
+                    dynamic_x = pt.x
+            self.current_opacity = opacity_byte(self.settings_manager)
+            data = render_crosshair_bgra(self.settings_manager, size=sz, hue=self.rainbow_hue, dynamic_x=dynamic_x)
+            if data is None:
+                return
             if self.pBits:
                 ctypes.memmove(self.pBits, data, len(data))
             self.update_layered_window()

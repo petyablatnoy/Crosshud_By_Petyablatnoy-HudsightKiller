@@ -45,7 +45,12 @@ def build(py):
         '--icon=icon.ico',
         '--version-file=version_info.txt',
         '--add-data=icon.ico;.',
+        '--add-data=qml;qml',
+        '--add-data=assets;assets',
         '--hidden-import=PySide6',
+        '--hidden-import=PySide6.QtQml',
+        '--hidden-import=PySide6.QtQuick',
+        '--hidden-import=PySide6.QtQuickControls2',
         '--hidden-import=PIL',
         '--hidden-import=PIL.Image',
         '--hidden-import=PIL.ImageDraw',
@@ -61,7 +66,10 @@ def sign():
     script = "sign_app.ps1"
     if not os.path.exists(script):
         raise FileNotFoundError(script)
-    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script], check=True)
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    if not shell:
+        raise FileNotFoundError("PowerShell executable not found")
+    subprocess.run([shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script], check=True)
 
 
 def pack():

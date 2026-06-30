@@ -1,0 +1,4 @@
+Lucide icons are distributed under the ISC License.
+Project: https://lucide.dev/
+
+The icon SVG files bundled here are local application assets used by CrossHud.

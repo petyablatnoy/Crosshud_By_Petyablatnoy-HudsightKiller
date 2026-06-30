@@ -104,10 +104,19 @@ Section "Uninstall"
   ${EndIf}
   Delete "$DESKTOP\${APP_NAME}.lnk"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
-  ${If} ${FileExists} "$INSTDIR\${EXE_NAME}"
+  StrCpy $2 "0"
+  ${If} "$INSTDIR" == "$PROGRAMFILES64\${APP_NAME}"
+    StrCpy $2 "1"
+  ${EndIf}
+  ${If} "$INSTDIR" == "$PROGRAMFILES\${APP_NAME}"
+    StrCpy $2 "1"
+  ${EndIf}
+  ${If} $2 == "1"
+  ${AndIf} ${FileExists} "$INSTDIR\${EXE_NAME}"
+  ${AndIf} ${FileExists} "$INSTDIR\Uninstall.exe"
     RMDir /r "$INSTDIR"
   ${Else}
-    DetailPrint "Каталог установки не удален: не найден ожидаемый ${EXE_NAME}."
+    DetailPrint "Каталог установки не удален: путь или файлы не прошли проверку безопасности."
   ${EndIf}
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
   MessageBox MB_YESNO "Удалить ваши настройки и профили прицелов?" IDNO +2

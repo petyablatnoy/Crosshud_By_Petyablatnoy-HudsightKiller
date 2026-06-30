@@ -13,7 +13,10 @@ except Exception:
 
 if getattr(sys, 'frozen', False):
     application_path = os.path.dirname(sys.executable)
+    resource_path = getattr(sys, "_MEIPASS", application_path)
     plugin_paths = [
+        os.path.join(resource_path, 'PySide6', 'plugins'),
+        os.path.join(resource_path, 'plugins'),
         os.path.join(application_path, 'PySide6', 'plugins'),
         os.path.join(application_path, 'plugins'),
         application_path
@@ -24,6 +27,33 @@ if getattr(sys, 'frozen', False):
 
 from crosshud_app import CrossHudApp
 from single_instance import SingleInstanceManager
+
+def attach_console_for_cli():
+    if not getattr(sys, 'frozen', False):
+        return
+    if not any(arg in ('--version', '-h', '--help') for arg in sys.argv[1:]):
+        return
+    try:
+        import msvcrt
+        stdout_handle = ctypes.windll.kernel32.GetStdHandle(-11)
+        stderr_handle = ctypes.windll.kernel32.GetStdHandle(-12)
+        invalid = ctypes.c_void_p(-1).value
+        if stdout_handle not in (0, invalid):
+            stdout_fd = msvcrt.open_osfhandle(stdout_handle, os.O_WRONLY)
+            sys.stdout = open(stdout_fd, "w", encoding="utf-8", buffering=1, closefd=False)
+        if stderr_handle not in (0, invalid):
+            stderr_fd = msvcrt.open_osfhandle(stderr_handle, os.O_WRONLY)
+            sys.stderr = open(stderr_fd, "w", encoding="utf-8", buffering=1, closefd=False)
+        if sys.stdout:
+            return
+    except Exception:
+        pass
+    try:
+        if ctypes.windll.kernel32.AttachConsole(-1):
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8", buffering=1)
+            sys.stderr = open("CONOUT$", "w", encoding="utf-8", buffering=1)
+    except Exception:
+        pass
 
 def setup_paths():
     if getattr(sys, 'frozen', False):
@@ -84,6 +114,7 @@ def load_profile(app, profile_name):
 def main():
     try:
         setup_paths()
+        attach_console_for_cli()
         
         args = parse_arguments()
         setup_logging(args.debug)

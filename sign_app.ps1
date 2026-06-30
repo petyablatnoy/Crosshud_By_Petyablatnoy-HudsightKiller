@@ -1,5 +1,3 @@
-$ErrorActionPreference = "Continue"
-Import-Module Microsoft.PowerShell.Security
 $ErrorActionPreference = "Stop"
 
 if (-not (Test-Path Cert:\CurrentUser\My)) {
