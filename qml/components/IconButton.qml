@@ -9,6 +9,7 @@ Item {
     property url iconSource
     property string tooltipText: ""
     property bool selected: false
+    property bool tooltipEnabled: true
     signal clicked()
 
     Rectangle {
@@ -50,7 +51,7 @@ Item {
         color: "#1E1F22"
         border.color: "#404249"
         border.width: 1
-        visible: mouse.containsMouse && root.tooltipText.length > 0
+        visible: root.tooltipEnabled && mouse.containsMouse && root.tooltipText.length > 0
         opacity: visible ? 1 : 0
 
         Behavior on opacity { NumberAnimation { duration: 120 } }

@@ -72,7 +72,6 @@ ComboBox {
             model: control.popup.visible ? control.delegateModel : null
             currentIndex: control.highlightedIndex
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ThemedScrollBar { active: true }
         }
 
         background: Rectangle {

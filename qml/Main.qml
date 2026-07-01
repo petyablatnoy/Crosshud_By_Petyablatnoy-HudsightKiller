@@ -44,16 +44,6 @@ ApplicationWindow {
         onTriggered: bridge.showStartupWarnings()
     }
 
-    Timer {
-        interval: 66
-        running: {
-            bridge.revision
-            return !!bridge.getSetting("rainbow_mode") || !!bridge.getSetting("dynamic_color")
-        }
-        repeat: true
-        onTriggered: bridge.advancePreviewAnimation()
-    }
-
     Rectangle {
         id: shell
         anchors.fill: parent
@@ -82,6 +72,7 @@ ApplicationWindow {
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 16
+                    anchors.rightMargin: 10
                     spacing: 8
 
                     Label {
@@ -89,23 +80,36 @@ ApplicationWindow {
                         color: "#F2F3F5"
                         font.pixelSize: 13
                         font.bold: true
+                    }
+
+                    Label {
+                        id: authorLink
+                        text: "by PetyaBlatnoy"
+                        color: authorMouse.containsMouse ? "#F2F3F5" : "#B5BAC1"
+                        font.pixelSize: 7
+                        verticalAlignment: Text.AlignVCenter
+
+                        MouseArea {
+                            id: authorMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: bridge.openProjectPage()
+                        }
+                    }
+
+                    Item {
                         Layout.fillWidth: true
                     }
 
-                    ActionButton {
+                    WindowButton {
                         text: "–"
-                        compact: true
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 28
                         onClicked: app.showMinimized()
                     }
 
-                    ActionButton {
+                    WindowButton {
                         text: "×"
-                        compact: true
                         danger: true
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 28
                         onClicked: app.hide()
                     }
                 }
@@ -120,52 +124,91 @@ ApplicationWindow {
                     id: sidebar
                     Layout.preferredWidth: 56
                     Layout.fillHeight: true
-                    color: "#2B2D31"
+                    color: "transparent"
                     z: 30
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 16
+                        color: "#2B2D31"
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        height: 18
+                        color: "#2B2D31"
+                    }
+
+                    Rectangle {
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        width: 18
+                        color: "#2B2D31"
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.topMargin: 12
                         anchors.bottomMargin: 12
-                        spacing: 6
+                        spacing: 0
 
-                        IconButton {
-                            iconSource: bridge.iconUrl("crosshair.svg")
-                            tooltipText: "Прицел"
-                            selected: app.currentPage === 0
-                            onClicked: app.currentPage = 0
-                        }
-                        IconButton {
-                            iconSource: bridge.iconUrl("settings.svg")
-                            tooltipText: "Система"
-                            selected: app.currentPage === 1
-                            onClicked: app.currentPage = 1
-                        }
-                        IconButton {
-                            iconSource: bridge.iconUrl("layout-grid.svg")
-                            tooltipText: "Кастомный прицел"
-                            selected: app.currentPage === 2
-                            onClicked: app.currentPage = 2
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            IconButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSource: bridge.iconUrl("crosshair.svg")
+                                tooltipText: "Прицел"
+                                selected: app.currentPage === 0
+                                onClicked: app.currentPage = 0
+                            }
+                            IconButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSource: bridge.iconUrl("settings.svg")
+                                tooltipText: "Система"
+                                selected: app.currentPage === 1
+                                onClicked: app.currentPage = 1
+                            }
+                            IconButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSource: bridge.iconUrl("layout-grid.svg")
+                                tooltipText: "Кастомный прицел"
+                                selected: app.currentPage === 2
+                                onClicked: app.currentPage = 2
+                            }
                         }
 
                         Item { Layout.fillHeight: true }
 
-                        IconButton {
-                            iconSource: bridge.iconUrl("save.svg")
-                            tooltipText: bridge.dirty ? "Сохранить настройки" : "Настройки сохранены"
-                            selected: bridge.dirty
-                            onClicked: app.saveClicked()
-                        }
-                        IconButton {
-                            iconSource: bridge.iconUrl("rotate-ccw.svg")
-                            tooltipText: "Сбросить несохраненное"
-                            onClicked: bridge.resetSettings()
-                        }
-                        IconButton {
-                            id: powerButton
-                            iconSource: bridge.iconUrl("power.svg")
-                            tooltipText: "Питание"
-                            onClicked: app.powerMenuOpen = !app.powerMenuOpen
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            IconButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSource: bridge.iconUrl("save.svg")
+                                tooltipText: bridge.dirty ? "Сохранить настройки" : "Настройки сохранены"
+                                selected: bridge.dirty
+                                onClicked: app.saveClicked()
+                            }
+                            IconButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSource: bridge.iconUrl("rotate-ccw.svg")
+                                tooltipText: "Сбросить несохраненное"
+                                onClicked: bridge.resetSettings()
+                            }
+                            IconButton {
+                                id: powerButton
+                                Layout.alignment: Qt.AlignHCenter
+                                iconSource: bridge.iconUrl("power.svg")
+                                tooltipText: "Питание"
+                                tooltipEnabled: !app.powerMenuOpen
+                                onClicked: app.powerMenuOpen = !app.powerMenuOpen
+                            }
                         }
                     }
                 }

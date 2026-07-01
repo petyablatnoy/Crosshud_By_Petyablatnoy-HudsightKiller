@@ -28,8 +28,5 @@ Rectangle {
             font.pixelSize: 11
             wrapMode: Text.NoWrap
         }
-
-        ScrollBar.vertical: ThemedScrollBar {}
-        ScrollBar.horizontal: ThemedScrollBar {}
     }
 }

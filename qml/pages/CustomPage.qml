@@ -245,8 +245,6 @@ Item {
                         }
                     }
 
-                    ScrollBar.vertical: ThemedScrollBar {}
-                    ScrollBar.horizontal: ThemedScrollBar {}
                 }
             }
         }
@@ -257,11 +255,6 @@ Item {
             Layout.maximumWidth: 320
             Layout.fillHeight: true
             spacing: 14
-
-            PreviewPanel {
-                bridge: root.bridge
-                Layout.preferredHeight: implicitHeight
-            }
 
             SectionPanel {
                 title: "ШАБЛОНЫ"

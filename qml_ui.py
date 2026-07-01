@@ -7,11 +7,8 @@ import winreg
 from urllib.parse import urlparse
 
 from PySide6.QtCore import QObject, Property, QThread, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices, QGuiApplication, QImage, QFont, QWindow
+from PySide6.QtGui import QDesktopServices, QGuiApplication, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtQuick import QQuickImageProvider
-
-from crosshair_renderer import render_crosshair_preview_image
 
 
 class UpdateChecker(QThread):
@@ -50,11 +47,11 @@ class UpdateChecker(QThread):
 
 class UiBridge(QObject):
     UPDATE_REPO_PATH = "/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller/releases/"
+    PROJECT_URL = "https://github.com/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller"
 
     revisionChanged = Signal()
     dirtyChanged = Signal()
     templatesChanged = Signal()
-    previewChanged = Signal()
     logsChanged = Signal()
     updateUrlChanged = Signal()
     toastRequested = Signal(str, str)
@@ -68,17 +65,10 @@ class UiBridge(QObject):
         self.overlay = overlay_manager
         self.app_icon = app_icon
         self._revision = 0
-        self._preview_revision = 0
-        self._preview_frame_width = 1
-        self._preview_frame_height = 1
-        self._crosshair_width = 0
-        self._crosshair_height = 0
         self._dirty = False
-        self._preview_hue = 0
         self._update_url = ""
         self._logs_text = ""
         self._update_thread = None
-        self.update_preview_metrics()
         self.refresh_logs()
         if self.settings.get("check_updates", True):
             self.start_update_check()
@@ -86,22 +76,6 @@ class UiBridge(QObject):
     @Property(int, notify=revisionChanged)
     def revision(self):
         return self._revision
-
-    @Property(int, notify=previewChanged)
-    def previewRevision(self):
-        return self._preview_revision
-
-    @Property(int, notify=previewChanged)
-    def previewFrameWidth(self):
-        return self._preview_frame_width
-
-    @Property(int, notify=previewChanged)
-    def previewFrameHeight(self):
-        return self._preview_frame_height
-
-    @Property(str, notify=previewChanged)
-    def previewSizeText(self):
-        return f"Прицел {self._crosshair_width} x {self._crosshair_height} px"
 
     @Property(bool, notify=dirtyChanged)
     def dirty(self):
@@ -315,17 +289,15 @@ class UiBridge(QObject):
             self.show_toast("Настройки исправлены. Подробности в логах.", "warning")
 
     @Slot()
-    def advancePreviewAnimation(self):
-        if self.settings.get("rainbow_mode", False) or self.settings.get("dynamic_color", False):
-            self._preview_hue = (self._preview_hue + 2) % 360
-            self.bump_preview()
-
-    @Slot()
     def openUpdate(self):
         if self._is_valid_update_url(self._update_url):
             QDesktopServices.openUrl(QUrl(self._update_url))
         else:
             self.show_toast("Ссылка обновления отклонена", "warning")
+
+    @Slot()
+    def openProjectPage(self):
+        QDesktopServices.openUrl(QUrl(self.PROJECT_URL))
 
     def mark_dirty(self):
         if not self._dirty:
@@ -335,17 +307,6 @@ class UiBridge(QObject):
     def bump_revision(self):
         self._revision += 1
         self.revisionChanged.emit()
-        self.update_preview_metrics()
-        self.bump_preview()
-
-    def bump_preview(self):
-        self._preview_revision += 1
-        self.previewChanged.emit()
-
-    def update_preview_metrics(self):
-        _img, crosshair_size, frame_size = render_crosshair_preview_image(self.settings, size=512, hue=self._preview_hue)
-        self._crosshair_width, self._crosshair_height = crosshair_size
-        self._preview_frame_width, self._preview_frame_height = frame_size
 
     def show_toast(self, text, kind="success"):
         logging.info("%s: %s", kind, text)
@@ -399,27 +360,6 @@ class UiBridge(QObject):
         return os.path.join(self.resource_dir(), "qml")
 
 
-class CrosshairImageProvider(QQuickImageProvider):
-    def __init__(self, bridge: UiBridge):
-        super().__init__(QQuickImageProvider.Image)
-        self.bridge = bridge
-
-    def requestImage(self, image_id, size, requested_size):
-        img, _crosshair_size, _frame_size = render_crosshair_preview_image(
-            self.bridge.settings,
-            size=512,
-            hue=self.bridge._preview_hue,
-            apply_opacity=True,
-        )
-        if img is None:
-            return QImage(1, 1, QImage.Format_RGBA8888)
-        data = img.tobytes("raw", "RGBA")
-        qimage = QImage(data, img.width, img.height, QImage.Format_RGBA8888).copy()
-        size.setWidth(qimage.width())
-        size.setHeight(qimage.height())
-        return qimage
-
-
 class QmlWindowController(QObject):
     notify_update = Signal(str, str, str)
     exit_confirmed = Signal()
@@ -434,7 +374,6 @@ class QmlWindowController(QObject):
         self.bridge.exitConfirmed.connect(self.exit_confirmed)
         self.engine = QQmlApplicationEngine(self)
         self.engine.rootContext().setContextProperty("bridge", self.bridge)
-        self.engine.addImageProvider("crosshair", CrosshairImageProvider(self.bridge))
         qml_file = os.path.join(self.bridge.qml_dir(), "Main.qml")
         self.engine.load(QUrl.fromLocalFile(qml_file))
         if not self.engine.rootObjects():

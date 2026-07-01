@@ -32,7 +32,8 @@ Item {
         anchors.margins: 24
 
         ColumnLayout {
-            width: Math.max(640, parent.width - 24)
+            x: Math.round((parent.width - width) / 2)
+            width: Math.min(880, parent.width)
             spacing: 14
 
             SectionPanel {

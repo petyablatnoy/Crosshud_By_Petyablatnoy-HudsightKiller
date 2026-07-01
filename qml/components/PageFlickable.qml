@@ -8,11 +8,4 @@ Flickable {
     contentWidth: width
     contentHeight: contentItem.childrenRect.height
     flickableDirection: Flickable.VerticalFlick
-
-    ScrollBar.vertical: ThemedScrollBar {
-        parent: root
-        anchors.right: root.right
-        anchors.top: root.top
-        anchors.bottom: root.bottom
-    }
 }
