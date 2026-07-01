@@ -6,8 +6,8 @@ import urllib.request
 import winreg
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QObject, Property, QThread, QTimer, QUrl, Signal, Slot
-from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QImage, QFont
+from PySide6.QtCore import QObject, Property, QThread, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices, QGuiApplication, QImage, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickImageProvider
 
@@ -101,6 +101,10 @@ class UiBridge(QObject):
     @Property(str, notify=logsChanged)
     def logsText(self):
         return self._logs_text
+
+    @Property(str, constant=True)
+    def logsPath(self):
+        return self.log_file_path()
 
     @Property(str, notify=updateUrlChanged)
     def updateUrl(self):
@@ -284,6 +288,10 @@ class UiBridge(QObject):
         self.logsChanged.emit()
 
     @Slot()
+    def openLogsFolder(self):
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(self.log_file_path())))
+
+    @Slot()
     def showStartupWarnings(self):
         warnings = self.settings.consume_warnings()
         if warnings:
@@ -342,7 +350,7 @@ class UiBridge(QObject):
             return False
 
     def refresh_logs(self):
-        log_file = os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy", "logs", "crosshud.log")
+        log_file = self.log_file_path()
         try:
             with open(log_file, "r", encoding="utf-8", errors="replace") as f:
                 text = f.read()
@@ -352,6 +360,9 @@ class UiBridge(QObject):
         except Exception:
             logging.exception("Failed to read logs")
             self._logs_text = "Не удалось прочитать лог."
+
+    def log_file_path(self):
+        return os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy", "logs", "crosshud.log")
 
     def resource_dir(self):
         if getattr(sys, "frozen", False):
@@ -420,6 +431,15 @@ class QmlWindowController(QObject):
 
     def isVisible(self):
         return bool(self.root.isVisible())
+
+    def isMinimized(self):
+        return bool(self.root.visibility() == QWindow.Minimized)
+
+    def showNormal(self):
+        if hasattr(self.root, "showNormal"):
+            self.root.showNormal()
+        else:
+            self.root.show()
 
     def activateWindow(self):
         if hasattr(self.root, "requestActivate"):

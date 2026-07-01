@@ -8,14 +8,14 @@ Rectangle {
     color: "#1E1F22"
     border.color: "#404249"
     border.width: 1
-    Layout.preferredWidth: 300
+    Layout.preferredWidth: 340
 
     property var bridge
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 18
-        spacing: 14
+        anchors.margins: 14
+        spacing: 12
 
         Label {
             text: "ПРЕВЬЮ"
@@ -28,7 +28,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: width
-            Layout.maximumHeight: 300
+            Layout.maximumHeight: 340
             radius: 8
             color: "#111214"
             border.color: "#2B2D31"

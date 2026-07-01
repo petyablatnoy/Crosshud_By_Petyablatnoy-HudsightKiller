@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../components"
 
@@ -70,10 +69,11 @@ Item {
         function onTemplatesChanged() { root.loadTemplates() }
     }
 
-    ColorDialog {
+    ColorPickerDialog {
         id: brushColorDialog
-        title: "Цвет кисти"
-        onAccepted: root.brushColor = selectedColor.toString().toUpperCase()
+        objectName: "customColorDialog"
+        titleText: "Цвет кисти"
+        onAccepted: function(color) { root.brushColor = color }
     }
 
     RowLayout {
@@ -117,8 +117,7 @@ Item {
                         text: "..."
                         compact: true
                         onClicked: {
-                            brushColorDialog.selectedColor = root.brushColor
-                            brushColorDialog.open()
+                            brushColorDialog.openWith(root.brushColor)
                         }
                     }
                     ActionButton { text: "-"; compact: true; onClicked: root.zoom = Math.max(3, root.zoom - 1); }
@@ -134,6 +133,32 @@ Item {
                     contentWidth: canvas.width
                     contentHeight: canvas.height
                     boundsBehavior: Flickable.StopAtBounds
+                    property bool smoothWheel: false
+
+                    function clampX(value) {
+                        return Math.max(0, Math.min(contentWidth - width, value))
+                    }
+
+                    function clampY(value) {
+                        return Math.max(0, Math.min(contentHeight - height, value))
+                    }
+
+                    Behavior on contentX {
+                        enabled: editorFlick.smoothWheel
+                        NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+                    }
+
+                    Behavior on contentY {
+                        enabled: editorFlick.smoothWheel
+                        NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+                    }
+
+                    Timer {
+                        id: wheelSmoothingReset
+                        interval: 120
+                        repeat: false
+                        onTriggered: editorFlick.smoothWheel = false
+                    }
 
                     Canvas {
                         id: canvas
@@ -189,8 +214,9 @@ Item {
                             }
                             onPositionChanged: function(mouse) {
                                 if (mouse.buttons & Qt.MiddleButton) {
-                                    editorFlick.contentX = Math.max(0, Math.min(editorFlick.contentWidth - editorFlick.width, editorFlick.contentX - (mouse.x - lastX)))
-                                    editorFlick.contentY = Math.max(0, Math.min(editorFlick.contentHeight - editorFlick.height, editorFlick.contentY - (mouse.y - lastY)))
+                                    editorFlick.smoothWheel = false
+                                    editorFlick.contentX = editorFlick.clampX(editorFlick.contentX - (mouse.x - lastX))
+                                    editorFlick.contentY = editorFlick.clampY(editorFlick.contentY - (mouse.y - lastY))
                                     lastX = mouse.x
                                     lastY = mouse.y
                                 } else if (pressed) {
@@ -202,7 +228,19 @@ Item {
                                     root.zoom = Math.max(3, Math.min(9, root.zoom + (wheel.angleDelta.y > 0 ? 1 : -1)))
                                     wheel.accepted = true
                                     canvas.requestPaint()
+                                    return
                                 }
+                                var dx = wheel.pixelDelta.x !== 0 ? -wheel.pixelDelta.x : -wheel.angleDelta.x / 120 * 58
+                                var dy = wheel.pixelDelta.y !== 0 ? -wheel.pixelDelta.y : -wheel.angleDelta.y / 120 * 58
+                                if ((wheel.modifiers & Qt.ShiftModifier) && Math.abs(dx) < 1) {
+                                    dx = dy
+                                    dy = 0
+                                }
+                                editorFlick.smoothWheel = true
+                                editorFlick.contentX = editorFlick.clampX(editorFlick.contentX + dx)
+                                editorFlick.contentY = editorFlick.clampY(editorFlick.contentY + dy)
+                                wheelSmoothingReset.restart()
+                                wheel.accepted = true
                             }
                         }
                     }
@@ -214,15 +252,15 @@ Item {
         }
 
         ColumnLayout {
-            Layout.preferredWidth: 280
-            Layout.minimumWidth: 280
-            Layout.maximumWidth: 280
+            Layout.preferredWidth: 320
+            Layout.minimumWidth: 320
+            Layout.maximumWidth: 320
             Layout.fillHeight: true
             spacing: 14
 
             PreviewPanel {
                 bridge: root.bridge
-                Layout.preferredHeight: 360
+                Layout.preferredHeight: 380
             }
 
             SectionPanel {

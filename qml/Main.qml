@@ -8,7 +8,7 @@ ApplicationWindow {
     id: app
     width: 1050
     height: 750
-    minimumWidth: 950
+    minimumWidth: 1000
     minimumHeight: 650
     visible: false
     flags: Qt.FramelessWindowHint | Qt.Window
@@ -121,6 +121,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 56
                     Layout.fillHeight: true
                     color: "#2B2D31"
+                    z: 30
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -174,6 +175,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     currentIndex: app.currentPage
+                    z: 0
 
                     AimPage { bridge: app.uiBridge }
                     SystemPage { bridge: app.uiBridge }

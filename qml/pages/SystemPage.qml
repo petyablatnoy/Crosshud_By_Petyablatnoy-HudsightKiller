@@ -146,6 +146,20 @@ Item {
                     ActionButton { text: "Обновить"; onClicked: bridge.refreshLogs() }
                 }
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Файл логов"; color: "#B5BAC1"; Layout.preferredWidth: 96 }
+                    DarkTextField {
+                        text: bridge.logsPath
+                        readOnly: true
+                        Layout.fillWidth: true
+                    }
+                    ActionButton {
+                        text: "Папка"
+                        onClicked: bridge.openLogsFolder()
+                    }
+                }
+
                 LogView {
                     text: bridge.logsText
                     Layout.fillWidth: true

@@ -43,28 +43,33 @@ RowLayout {
         to: root.to
         stepSize: root.stepSize
         value: root.settingValue()
+        padding: 0
+        implicitHeight: 28
         Layout.preferredWidth: 170
         onMoved: root.bridge.setSetting(root.settingKey, value / root.valueFactor)
 
-        background: Rectangle {
-            x: slider.leftPadding
+        background: Item {
+            x: slider.leftPadding + sliderHandle.width / 2
             y: slider.topPadding + Math.round((slider.availableHeight - height) / 2)
-            width: slider.availableWidth
-            height: 6
-            radius: 3
-            color: "#1E1F22"
-            border.color: "#404249"
-            border.width: 1
+            width: slider.availableWidth - sliderHandle.width
+            height: 8
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 4
+                color: "#18191C"
+            }
 
             Rectangle {
                 width: slider.visualPosition * parent.width
                 height: parent.height
-                radius: 3
+                radius: 4
                 color: "#5865F2"
             }
         }
 
         handle: Rectangle {
+            id: sliderHandle
             x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
             y: slider.topPadding + Math.round((slider.availableHeight - height) / 2)
             width: 16

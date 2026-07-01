@@ -71,7 +71,8 @@ ComboBox {
             implicitHeight: contentHeight
             model: control.popup.visible ? control.delegateModel : null
             currentIndex: control.highlightedIndex
-            ScrollBar.vertical: ThemedScrollBar {}
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ThemedScrollBar { active: true }
         }
 
         background: Rectangle {

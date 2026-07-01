@@ -9,8 +9,12 @@ TextField {
     selectedTextColor: "#FFFFFF"
     selectionColor: "#5865F2"
     font.pixelSize: 12
+    verticalAlignment: TextInput.AlignVCenter
+    selectByMouse: true
     leftPadding: 10
     rightPadding: 10
+    topPadding: 0
+    bottomPadding: 0
 
     background: Rectangle {
         color: "#1E1F22"

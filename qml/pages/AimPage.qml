@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../components"
 
@@ -13,11 +12,12 @@ Item {
         return bridge.getSetting(key)
     }
 
-    ColorDialog {
+    ColorPickerDialog {
         id: colorDialog
+        objectName: "aimColorDialog"
         property string settingKey: ""
-        title: "Выбор цвета"
-        onAccepted: bridge.setSetting(settingKey, selectedColor.toString().toUpperCase())
+        titleText: "Выбор цвета"
+        onAccepted: function(color) { bridge.setSetting(settingKey, color) }
     }
 
     RowLayout {
@@ -28,10 +28,10 @@ Item {
         PageFlickable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 540
+            Layout.minimumWidth: 520
 
             ColumnLayout {
-                width: Math.max(540, parent.width - 24)
+                width: Math.max(520, parent.width - 24)
                 spacing: 14
 
                 SectionPanel {
@@ -54,8 +54,7 @@ Item {
                             settingKey: "color"
                             onCustomRequested: function(key) {
                                 colorDialog.settingKey = key
-                                colorDialog.selectedColor = root.setting(key)
-                                colorDialog.open()
+                                colorDialog.openWith(root.setting(key))
                             }
                         }
                     }
@@ -89,8 +88,7 @@ Item {
                             settingKey: "center_dot_color"
                             onCustomRequested: function(key) {
                                 colorDialog.settingKey = key
-                                colorDialog.selectedColor = root.setting(key)
-                                colorDialog.open()
+                                colorDialog.openWith(root.setting(key))
                             }
                         }
                     }
@@ -115,8 +113,7 @@ Item {
                             swatches: ["#000000", "#FFFFFF", "#5865F2", "#ED4245", "#23A559", "#FAA61A"]
                             onCustomRequested: function(key) {
                                 colorDialog.settingKey = key
-                                colorDialog.selectedColor = root.setting(key)
-                                colorDialog.open()
+                                colorDialog.openWith(root.setting(key))
                             }
                         }
                     }
@@ -149,15 +146,15 @@ Item {
         }
 
         ColumnLayout {
-            Layout.preferredWidth: 300
-            Layout.minimumWidth: 300
-            Layout.maximumWidth: 300
+            Layout.preferredWidth: 340
+            Layout.minimumWidth: 340
+            Layout.maximumWidth: 340
             Layout.fillHeight: true
             spacing: 14
 
             PreviewPanel {
                 bridge: root.bridge
-                Layout.preferredHeight: 376
+                Layout.preferredHeight: 400
                 Layout.fillWidth: true
             }
 
