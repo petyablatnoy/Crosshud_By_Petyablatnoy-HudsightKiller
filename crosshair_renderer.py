@@ -1,4 +1,5 @@
 import colorsys
+import math
 from typing import Any, Mapping, Optional, Tuple
 
 try:
@@ -133,6 +134,68 @@ def render_crosshair_image(
             a = a.point(lambda value: int(value * alpha / 255))
             img = Image.merge("RGBA", (r, g, b, a))
     return img
+
+
+def _padded_bbox(bbox, image_size: Tuple[int, int], scale: float = 1.05):
+    left, top, right, bottom = bbox
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    target_width = max(width, int(math.ceil(width * scale)))
+    target_height = max(height, int(math.ceil(height * scale)))
+    center_x = (left + right) / 2
+    center_y = (top + bottom) / 2
+
+    crop_left = int(math.floor(center_x - target_width / 2))
+    crop_top = int(math.floor(center_y - target_height / 2))
+    crop_right = crop_left + target_width
+    crop_bottom = crop_top + target_height
+
+    img_width, img_height = image_size
+    if crop_left < 0:
+        crop_right -= crop_left
+        crop_left = 0
+    if crop_top < 0:
+        crop_bottom -= crop_top
+        crop_top = 0
+    if crop_right > img_width:
+        crop_left -= crop_right - img_width
+        crop_right = img_width
+    if crop_bottom > img_height:
+        crop_top -= crop_bottom - img_height
+        crop_bottom = img_height
+
+    crop_left = max(0, crop_left)
+    crop_top = max(0, crop_top)
+    return crop_left, crop_top, crop_right, crop_bottom
+
+
+def render_crosshair_preview_image(
+    settings: Any,
+    size: int = 512,
+    hue: float = 0,
+    dynamic_x: Optional[int] = None,
+    apply_opacity: bool = True,
+    padding_scale: float = 1.05,
+):
+    img = render_crosshair_image(
+        settings,
+        size=size,
+        hue=hue,
+        dynamic_x=dynamic_x,
+        apply_opacity=apply_opacity,
+    )
+    if img is None:
+        return None, (0, 0), (0, 0)
+
+    alpha_bbox = img.getchannel("A").getbbox()
+    if alpha_bbox is None:
+        empty = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+        return empty, (0, 0), (1, 1)
+
+    frame_bbox = _padded_bbox(alpha_bbox, img.size, padding_scale)
+    cropped = img.crop(frame_bbox)
+    crosshair_size = (alpha_bbox[2] - alpha_bbox[0], alpha_bbox[3] - alpha_bbox[1])
+    return cropped, crosshair_size, cropped.size
 
 
 def rgba_to_bgra_bytes(img) -> bytes:

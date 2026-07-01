@@ -9,10 +9,12 @@ Rectangle {
     border.color: "#404249"
     border.width: 1
     Layout.preferredWidth: 340
+    implicitHeight: content.implicitHeight + 28
 
     property var bridge
 
     ColumnLayout {
+        id: content
         anchors.fill: parent
         anchors.margins: 14
         spacing: 12
@@ -26,9 +28,9 @@ Rectangle {
         }
 
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: width
-            Layout.maximumHeight: 340
+            Layout.preferredWidth: Math.max(1, root.bridge.previewFrameWidth)
+            Layout.preferredHeight: Math.max(1, root.bridge.previewFrameHeight)
+            Layout.alignment: Qt.AlignHCenter
             radius: 8
             color: "#111214"
             border.color: "#2B2D31"
@@ -53,14 +55,22 @@ Rectangle {
 
             Image {
                 anchors.centerIn: parent
-                width: parent.width
-                height: parent.height
+                width: Math.max(1, root.bridge.previewFrameWidth)
+                height: Math.max(1, root.bridge.previewFrameHeight)
                 source: "image://crosshair/preview/" + root.bridge.previewRevision
-                sourceSize.width: 512
-                sourceSize.height: 512
+                sourceSize.width: Math.max(1, root.bridge.previewFrameWidth)
+                sourceSize.height: Math.max(1, root.bridge.previewFrameHeight)
                 cache: false
-                fillMode: Image.PreserveAspectFit
+                fillMode: Image.Pad
             }
+        }
+
+        Label {
+            text: root.bridge.previewSizeText
+            color: "#B5BAC1"
+            font.pixelSize: 11
+            horizontalAlignment: Text.AlignHCenter
+            Layout.fillWidth: true
         }
     }
 }

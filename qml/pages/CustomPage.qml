@@ -260,7 +260,7 @@ Item {
 
             PreviewPanel {
                 bridge: root.bridge
-                Layout.preferredHeight: 380
+                Layout.preferredHeight: implicitHeight
             }
 
             SectionPanel {

@@ -11,7 +11,7 @@ from PySide6.QtGui import QDesktopServices, QGuiApplication, QImage, QFont, QWin
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickImageProvider
 
-from crosshair_renderer import render_crosshair_image
+from crosshair_renderer import render_crosshair_preview_image
 
 
 class UpdateChecker(QThread):
@@ -69,11 +69,16 @@ class UiBridge(QObject):
         self.app_icon = app_icon
         self._revision = 0
         self._preview_revision = 0
+        self._preview_frame_width = 1
+        self._preview_frame_height = 1
+        self._crosshair_width = 0
+        self._crosshair_height = 0
         self._dirty = False
         self._preview_hue = 0
         self._update_url = ""
         self._logs_text = ""
         self._update_thread = None
+        self.update_preview_metrics()
         self.refresh_logs()
         if self.settings.get("check_updates", True):
             self.start_update_check()
@@ -85,6 +90,18 @@ class UiBridge(QObject):
     @Property(int, notify=previewChanged)
     def previewRevision(self):
         return self._preview_revision
+
+    @Property(int, notify=previewChanged)
+    def previewFrameWidth(self):
+        return self._preview_frame_width
+
+    @Property(int, notify=previewChanged)
+    def previewFrameHeight(self):
+        return self._preview_frame_height
+
+    @Property(str, notify=previewChanged)
+    def previewSizeText(self):
+        return f"Прицел {self._crosshair_width} x {self._crosshair_height} px"
 
     @Property(bool, notify=dirtyChanged)
     def dirty(self):
@@ -318,11 +335,17 @@ class UiBridge(QObject):
     def bump_revision(self):
         self._revision += 1
         self.revisionChanged.emit()
+        self.update_preview_metrics()
         self.bump_preview()
 
     def bump_preview(self):
         self._preview_revision += 1
         self.previewChanged.emit()
+
+    def update_preview_metrics(self):
+        _img, crosshair_size, frame_size = render_crosshair_preview_image(self.settings, size=512, hue=self._preview_hue)
+        self._crosshair_width, self._crosshair_height = crosshair_size
+        self._preview_frame_width, self._preview_frame_height = frame_size
 
     def show_toast(self, text, kind="success"):
         logging.info("%s: %s", kind, text)
@@ -382,18 +405,14 @@ class CrosshairImageProvider(QQuickImageProvider):
         self.bridge = bridge
 
     def requestImage(self, image_id, size, requested_size):
-        target_size = requested_size.width() if requested_size.width() > 0 else 256
-        target_size = max(96, min(512, target_size))
-        img = render_crosshair_image(
+        img, _crosshair_size, _frame_size = render_crosshair_preview_image(
             self.bridge.settings,
             size=512,
             hue=self.bridge._preview_hue,
             apply_opacity=True,
         )
         if img is None:
-            return QImage(target_size, target_size, QImage.Format_RGBA8888)
-        if target_size != 512:
-            img = img.resize((target_size, target_size))
+            return QImage(1, 1, QImage.Format_RGBA8888)
         data = img.tobytes("raw", "RGBA")
         qimage = QImage(data, img.width, img.height, QImage.Format_RGBA8888).copy()
         size.setWidth(qimage.width())

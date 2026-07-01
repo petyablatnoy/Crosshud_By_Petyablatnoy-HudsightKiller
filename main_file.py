@@ -6,6 +6,10 @@ import ctypes
 from logging.handlers import RotatingFileHandler
 from PySide6.QtCore import QCoreApplication
 
+
+LOG_MAX_BYTES = int(7.5 * 1024 * 1024)
+LOG_BACKUP_COUNT = 4
+
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("PetyaBlatnoy.CrossHud.App.4")
 except Exception:
@@ -81,12 +85,38 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         return
     logging.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
+def rotate_logs_on_start(log_file, backup_count=LOG_BACKUP_COUNT):
+    for index in range(backup_count, 0, -1):
+        source = f"{log_file}.{index}"
+        target = f"{log_file}.{index + 1}"
+        if not os.path.exists(source):
+            continue
+        if index >= backup_count:
+            os.remove(source)
+        else:
+            os.replace(source, target)
+
+    if not os.path.exists(log_file):
+        return
+    if os.path.getsize(log_file) <= 0:
+        os.remove(log_file)
+        return
+    os.replace(log_file, f"{log_file}.1")
+
 def setup_logging(debug_mode=False):
     level = logging.DEBUG if debug_mode else logging.INFO
     log_dir = os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy", "logs")
     os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "crosshud.log")
+    rotate_logs_on_start(log_file)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler = RotatingFileHandler(os.path.join(log_dir, "crosshud.log"), maxBytes=2*1024*1024, backupCount=2, encoding='utf-8')
+    file_handler = RotatingFileHandler(
+        log_file,
+        mode='w',
+        maxBytes=LOG_MAX_BYTES,
+        backupCount=LOG_BACKUP_COUNT,
+        encoding='utf-8',
+    )
     file_handler.setFormatter(formatter)
     file_handler.setLevel(level)
     root_logger = logging.getLogger()
@@ -117,10 +147,11 @@ def main():
         attach_console_for_cli()
         
         args = parse_arguments()
-        setup_logging(args.debug)
 
         if SingleInstanceManager.notify_existing():
             return
+
+        setup_logging(args.debug)
         
         app = CrossHudApp()
         single_instance = SingleInstanceManager(app.app)

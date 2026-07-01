@@ -154,7 +154,7 @@ Item {
 
             PreviewPanel {
                 bridge: root.bridge
-                Layout.preferredHeight: 400
+                Layout.preferredHeight: implicitHeight
                 Layout.fillWidth: true
             }
 
