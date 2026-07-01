@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../components"
 
@@ -29,6 +30,11 @@ Item {
     function commitPixels() {
         bridge.setCustomPixelsJson(JSON.stringify(pixels))
         canvas.requestPaint()
+    }
+
+    function setting(key) {
+        bridge.revision
+        return bridge.getSetting(key)
     }
 
     function setPixel(gx, gy, color) {
@@ -64,6 +70,12 @@ Item {
         function onTemplatesChanged() { root.loadTemplates() }
     }
 
+    ColorDialog {
+        id: brushColorDialog
+        title: "Цвет кисти"
+        onAccepted: root.brushColor = selectedColor.toString().toUpperCase()
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 24
@@ -81,6 +93,15 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Label { text: "Пиксельный прицел"; color: "#F2F3F5"; Layout.fillWidth: true }
+                    Toggle {
+                        checked: !!root.setting("pixel_perfect")
+                        onUserToggled: bridge.setSetting("pixel_perfect", checked)
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
                     Label { text: "Цвет кисти"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Repeater {
                         model: ["#00FF00", "#FFFFFF", "#FF3131", "#5865F2", "#FFD43B", "#00D1FF"]
@@ -90,6 +111,14 @@ Item {
                             border.width: root.brushColor === modelData ? 2 : 1
                             border.color: root.brushColor === modelData ? "#F2F3F5" : "#404249"
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.brushColor = modelData }
+                        }
+                    }
+                    ActionButton {
+                        text: "..."
+                        compact: true
+                        onClicked: {
+                            brushColorDialog.selectedColor = root.brushColor
+                            brushColorDialog.open()
                         }
                     }
                     ActionButton { text: "-"; compact: true; onClicked: root.zoom = Math.max(3, root.zoom - 1); }

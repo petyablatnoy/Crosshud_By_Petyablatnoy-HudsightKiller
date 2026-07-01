@@ -102,6 +102,16 @@ class UiBridgeTests(unittest.TestCase):
         self.assertTrue(bridge.deleteTemplate(0))
         self.assertEqual(json.loads(bridge.templatesJson), [])
 
+    def test_set_resolution_updates_both_dimensions_once(self):
+        bridge, settings, overlay = self.create_bridge()
+
+        self.assertTrue(bridge.setResolution(2560, 1440))
+
+        self.assertEqual(settings.get("screen_width"), 2560)
+        self.assertEqual(settings.get("screen_height"), 1440)
+        self.assertEqual(overlay.refresh_count, 1)
+        self.assertTrue(bridge.dirty)
+
 
 if __name__ == "__main__":
     unittest.main()

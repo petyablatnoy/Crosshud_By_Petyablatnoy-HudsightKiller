@@ -45,5 +45,34 @@ RowLayout {
         value: root.settingValue()
         Layout.preferredWidth: 170
         onMoved: root.bridge.setSetting(root.settingKey, value / root.valueFactor)
+
+        background: Rectangle {
+            x: slider.leftPadding
+            y: slider.topPadding + Math.round((slider.availableHeight - height) / 2)
+            width: slider.availableWidth
+            height: 6
+            radius: 3
+            color: "#1E1F22"
+            border.color: "#404249"
+            border.width: 1
+
+            Rectangle {
+                width: slider.visualPosition * parent.width
+                height: parent.height
+                radius: 3
+                color: "#5865F2"
+            }
+        }
+
+        handle: Rectangle {
+            x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
+            y: slider.topPadding + Math.round((slider.availableHeight - height) / 2)
+            width: 16
+            height: 16
+            radius: 8
+            color: slider.pressed ? "#F2F3F5" : "#B5BAC1"
+            border.color: "#5865F2"
+            border.width: 2
+        }
     }
 }

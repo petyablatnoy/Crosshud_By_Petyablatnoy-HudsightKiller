@@ -3,14 +3,13 @@ import QtQuick.Controls
 
 ScrollBar {
     id: root
-    implicitWidth: 8
-    implicitHeight: 8
+    implicitWidth: 6
+    implicitHeight: 6
     policy: ScrollBar.AsNeeded
 
     background: Rectangle {
         radius: 4
-        color: "#1E1F22"
-        opacity: 0.45
+        color: "transparent"
     }
 
     contentItem: Rectangle {

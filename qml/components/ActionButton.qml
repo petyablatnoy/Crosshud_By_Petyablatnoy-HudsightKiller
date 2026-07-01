@@ -3,7 +3,7 @@ import QtQuick.Controls
 
 Item {
     id: root
-    implicitWidth: compact ? 38 : Math.max(92, label.implicitWidth + 28)
+    implicitWidth: compact ? 36 : Math.max(92, label.implicitWidth + 28)
     implicitHeight: compact ? 28 : 30
     opacity: enabled ? 1.0 : 0.45
 

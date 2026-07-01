@@ -8,7 +8,7 @@ Rectangle {
     color: "#1E1F22"
     border.color: "#404249"
     border.width: 1
-    Layout.preferredWidth: 280
+    Layout.preferredWidth: 300
 
     property var bridge
 
@@ -28,6 +28,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: width
+            Layout.maximumHeight: 300
             radius: 8
             color: "#111214"
             border.color: "#2B2D31"

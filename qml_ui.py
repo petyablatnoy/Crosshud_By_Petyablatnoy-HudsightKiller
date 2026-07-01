@@ -140,6 +140,19 @@ class UiBridge(QObject):
         self.mark_dirty()
         self.bump_revision()
 
+    @Slot(int, int, result=bool)
+    def setResolution(self, width, height):
+        width = int(width)
+        height = int(height)
+        if not self.settings.set_resolution(width, height):
+            self.show_toast("Разрешение вне допустимого диапазона", "warning")
+            self.bump_revision()
+            return False
+        self.overlay.request_recreation()
+        self.mark_dirty()
+        self.bump_revision()
+        return True
+
     @Slot(str)
     def setCustomPixelsJson(self, pixels_json):
         try:

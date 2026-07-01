@@ -17,6 +17,7 @@ ApplicationWindow {
 
     property int currentPage: 0
     property var uiBridge: bridge
+    property bool powerMenuOpen: false
 
     function saveClicked() {
         if (bridge.hasUnsavedCustomPixels())
@@ -94,6 +95,8 @@ ApplicationWindow {
                     ActionButton {
                         text: "–"
                         compact: true
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 28
                         onClicked: app.showMinimized()
                     }
 
@@ -101,6 +104,8 @@ ApplicationWindow {
                         text: "×"
                         compact: true
                         danger: true
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 28
                         onClicked: app.hide()
                     }
                 }
@@ -156,9 +161,10 @@ ApplicationWindow {
                             onClicked: bridge.resetSettings()
                         }
                         IconButton {
+                            id: powerButton
                             iconSource: bridge.iconUrl("power.svg")
-                            tooltipText: "Выход"
-                            onClicked: bridge.requestExit()
+                            tooltipText: "Питание"
+                            onClicked: app.powerMenuOpen = !app.powerMenuOpen
                         }
                     }
                 }
@@ -216,6 +222,55 @@ ApplicationWindow {
     ToastLayer {
         id: toastLayer
         anchors.fill: parent
+    }
+
+    Item {
+        id: powerMenuLayer
+        anchors.fill: parent
+        z: 20
+        visible: app.powerMenuOpen
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: app.powerMenuOpen = false
+        }
+
+        Rectangle {
+            id: powerMenu
+            x: 64
+            y: app.height - height - 18
+            width: 178
+            height: 84
+            radius: 8
+            color: "#1E1F22"
+            border.color: "#404249"
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 8
+
+                ActionButton {
+                    text: "Свернуть"
+                    Layout.fillWidth: true
+                    onClicked: {
+                        app.powerMenuOpen = false
+                        app.hide()
+                    }
+                }
+
+                ActionButton {
+                    text: "Выйти"
+                    danger: true
+                    Layout.fillWidth: true
+                    onClicked: {
+                        app.powerMenuOpen = false
+                        bridge.requestExit()
+                    }
+                }
+            }
+        }
     }
 
     ConfirmDialog {

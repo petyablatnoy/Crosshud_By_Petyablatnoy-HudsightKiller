@@ -9,17 +9,27 @@ Item {
     property var rmbLabels: ["Ничего", "Скрывать (Hold)", "Переключать (Toggle)"]
     property var rmbValues: ["disabled", "hold", "toggle"]
     property var hotkeys: ["Insert", "Home", "End", "PageUp", "PageDown", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"]
+    property var resolutionLabels: ["HD 1280x720", "Full HD 1920x1080", "QHD 2560x1440", "4K 3840x2160", "Свой размер"]
+    property var resolutionValues: [[1280, 720], [1920, 1080], [2560, 1440], [3840, 2160], [0, 0]]
 
     function setting(key) {
         bridge.revision
         return bridge.getSetting(key)
     }
 
-    ScrollView {
+    function currentResolutionIndex() {
+        var width = Number(root.setting("screen_width"))
+        var height = Number(root.setting("screen_height"))
+        for (var i = 0; i < root.resolutionValues.length - 1; i++) {
+            if (root.resolutionValues[i][0] === width && root.resolutionValues[i][1] === height)
+                return i
+        }
+        return root.resolutionValues.length - 1
+    }
+
+    PageFlickable {
         anchors.fill: parent
         anchors.margins: 24
-        clip: true
-        ScrollBar.vertical: ThemedScrollBar {}
 
         ColumnLayout {
             width: Math.max(640, parent.width - 24)
@@ -28,8 +38,42 @@ Item {
             SectionPanel {
                 title: "МОНИТОР И ОВЕРЛЕЙ"
 
-                SliderRow { bridge: root.bridge; label: "Ширина экрана"; settingKey: "screen_width"; from: 800; to: 7680; stepSize: 10 }
-                SliderRow { bridge: root.bridge; label: "Высота экрана"; settingKey: "screen_height"; from: 600; to: 4320; stepSize: 10 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Разрешение"; color: "#F2F3F5"; Layout.fillWidth: true }
+                    DarkComboBox {
+                        model: root.resolutionLabels
+                        currentIndex: root.currentResolutionIndex()
+                        Layout.preferredWidth: 220
+                        onActivated: {
+                            if (currentIndex < root.resolutionValues.length - 1)
+                                bridge.setResolution(root.resolutionValues[currentIndex][0], root.resolutionValues[currentIndex][1])
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Свой размер"; color: "#F2F3F5"; Layout.fillWidth: true }
+                    DarkTextField {
+                        id: widthField
+                        text: String(root.setting("screen_width"))
+                        Layout.preferredWidth: 96
+                        validator: IntValidator { bottom: 800; top: 7680 }
+                    }
+                    Label { text: "×"; color: "#949BA4"; font.bold: true }
+                    DarkTextField {
+                        id: heightField
+                        text: String(root.setting("screen_height"))
+                        Layout.preferredWidth: 96
+                        validator: IntValidator { bottom: 600; top: 4320 }
+                    }
+                    ActionButton {
+                        text: "Применить"
+                        highlighted: true
+                        onClicked: bridge.setResolution(Number(widthField.text), Number(heightField.text))
+                    }
+                }
             }
 
             SectionPanel {
@@ -102,16 +146,10 @@ Item {
                     ActionButton { text: "Обновить"; onClicked: bridge.refreshLogs() }
                 }
 
-                TextArea {
+                LogView {
                     text: bridge.logsText
-                    readOnly: true
-                    wrapMode: TextEdit.NoWrap
-                    color: "#DBDEE1"
-                    font.family: "Consolas"
-                    font.pixelSize: 11
                     Layout.fillWidth: true
                     Layout.preferredHeight: 260
-                    background: Rectangle { color: "#111214"; radius: 6; border.color: "#1F2023" }
                 }
             }
         }

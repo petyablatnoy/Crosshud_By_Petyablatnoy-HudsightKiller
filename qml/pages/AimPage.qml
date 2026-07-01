@@ -25,11 +25,10 @@ Item {
         anchors.margins: 24
         spacing: 18
 
-        ScrollView {
+        PageFlickable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            ScrollBar.vertical: ThemedScrollBar {}
+            Layout.minimumWidth: 540
 
             ColumnLayout {
                 width: Math.max(540, parent.width - 24)
@@ -149,9 +148,20 @@ Item {
             }
         }
 
-        PreviewPanel {
-            bridge: root.bridge
+        ColumnLayout {
+            Layout.preferredWidth: 300
+            Layout.minimumWidth: 300
+            Layout.maximumWidth: 300
             Layout.fillHeight: true
+            spacing: 14
+
+            PreviewPanel {
+                bridge: root.bridge
+                Layout.preferredHeight: 376
+                Layout.fillWidth: true
+            }
+
+            Item { Layout.fillHeight: true }
         }
     }
 }

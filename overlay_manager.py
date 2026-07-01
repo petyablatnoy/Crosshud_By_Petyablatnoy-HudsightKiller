@@ -29,7 +29,12 @@ HWND_TOPMOST = -1
 WM_QUIT = 0x0012
 WM_DESTROY = 0x0002
 WM_CLOSE = 0x0010
+WM_HOTKEY = 0x0312
+WM_RBUTTONDOWN = 0x0204
+WM_RBUTTONUP = 0x0205
+WM_RBUTTONDBLCLK = 0x0206
 PM_REMOVE = 0x0001
+WH_MOUSE_LL = 14
 BI_RGB = 0
 DIB_RGB_COLORS = 0
 AC_SRC_ALPHA = 1
@@ -73,6 +78,7 @@ HBITMAP = ctypes.c_void_p
 HGDIOBJ = ctypes.c_void_p
 
 WNDPROC = ctypes.WINFUNCTYPE(LRESULT, HWND, wintypes.UINT, WPARAM, LPARAM)
+LOWLEVELMOUSEPROC = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, WPARAM, LPARAM)
 
 user32.DefWindowProcW.argtypes = [HWND, wintypes.UINT, WPARAM, LPARAM]
 user32.DefWindowProcW.restype = LRESULT
@@ -92,6 +98,19 @@ user32.SetWindowPos.argtypes = [HWND, HWND, ctypes.c_int, ctypes.c_int, ctypes.c
 user32.SetWindowPos.restype = wintypes.BOOL
 user32.UpdateLayeredWindow.argtypes = [HWND, HDC, ctypes.POINTER(POINT), ctypes.POINTER(SIZE), HDC, ctypes.POINTER(POINT), wintypes.COLORREF, ctypes.POINTER(BLENDFUNCTION), wintypes.DWORD]
 user32.UpdateLayeredWindow.restype = wintypes.BOOL
+user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), HWND, wintypes.UINT, wintypes.UINT]
+user32.GetMessageW.restype = ctypes.c_int
+user32.PostThreadMessageW.argtypes = [wintypes.DWORD, wintypes.UINT, WPARAM, LPARAM]
+user32.PostThreadMessageW.restype = wintypes.BOOL
+user32.SetWindowsHookExW.argtypes = [ctypes.c_int, ctypes.c_void_p, wintypes.HINSTANCE, wintypes.DWORD]
+user32.SetWindowsHookExW.restype = wintypes.HANDLE
+user32.UnhookWindowsHookEx.argtypes = [wintypes.HANDLE]
+user32.UnhookWindowsHookEx.restype = wintypes.BOOL
+user32.CallNextHookEx.argtypes = [wintypes.HANDLE, ctypes.c_int, WPARAM, LPARAM]
+user32.CallNextHookEx.restype = LRESULT
+kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+kernel32.GetCurrentThreadId.restype = wintypes.DWORD
 
 gdi32.CreateCompatibleDC.argtypes = [HDC]
 gdi32.CreateCompatibleDC.restype = HDC
@@ -134,6 +153,10 @@ class OverlayManager:
         self.render_thread = None
         self.hotkey_thread = None
         self.topmost_thread = None
+        self.hotkey_thread_id = 0
+        self.mouse_thread_id = 0
+        self.mouse_hook_handle = None
+        self.mouse_hook_proc = LOWLEVELMOUSEPROC(self._low_level_mouse_proc)
         self.win_event_proc_proto = ctypes.WINFUNCTYPE(None, wintypes.HANDLE, wintypes.DWORD, wintypes.HWND, ctypes.c_long, ctypes.c_long, wintypes.DWORD, wintypes.DWORD)
         self.win_event_proc = self.win_event_proc_proto(self._win_event_proc)
         self.hotkey_restart_event = Event()
@@ -214,9 +237,12 @@ class OverlayManager:
 
     def update_hotkey(self):
         self.hotkey_restart_event.set()
+        if self.hotkey_thread_id:
+            user32.PostThreadMessageW(self.hotkey_thread_id, WM_QUIT, 0, 0)
 
     def _hotkey_loop(self) -> None:
         HOTKEY_ID = 1
+        self.hotkey_thread_id = kernel32.GetCurrentThreadId()
         while not self.thread_stop_event.is_set():
             key_name = self.settings_manager.get('hotkey', 'Insert')
             vk = self.VK_MAP.get(key_name, 0x2D)
@@ -224,28 +250,83 @@ class OverlayManager:
                 msg = wintypes.MSG()
                 self.hotkey_restart_event.clear()
                 while not self.thread_stop_event.is_set() and not self.hotkey_restart_event.is_set():
-                    if user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, PM_REMOVE):
-                        if msg.message == 0x0312 and msg.wParam == HOTKEY_ID:
+                    result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+                    if result <= 0:
+                        break
+                    if not self.hotkey_restart_event.is_set():
+                        if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
                             if self.on_toggle_callback: self.on_toggle_callback()
                         user32.TranslateMessage(ctypes.byref(msg))
                         user32.DispatchMessageW(ctypes.byref(msg))
-                    self.thread_stop_event.wait(0.05)
                 user32.UnregisterHotKey(None, HOTKEY_ID)
             else:
                 self.thread_stop_event.wait(1)
 
     def _mouse_monitor_loop(self) -> None:
+        self.mouse_thread_id = kernel32.GetCurrentThreadId()
+        if self._install_mouse_hook():
+            msg = wintypes.MSG()
+            try:
+                while not self.thread_stop_event.is_set():
+                    result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+                    if result <= 0:
+                        break
+                    user32.TranslateMessage(ctypes.byref(msg))
+                    user32.DispatchMessageW(ctypes.byref(msg))
+            except Exception:
+                logging.exception("Mouse hook loop error")
+            finally:
+                self._uninstall_mouse_hook()
+            return
+
         last_state = False
         while not self.thread_stop_event.is_set():
             try:
-                is_down = bool(user32.GetAsyncKeyState(0x02) & 0x8000)
+                state = user32.GetAsyncKeyState(0x02)
+                is_down = bool(state & 0x8000)
+                transitioned = bool(state & 0x0001)
+                if transitioned and not is_down and not last_state:
+                    self._handle_mouse_event(True)
+                    self._handle_mouse_event(False)
                 if is_down != last_state:
                     self._handle_mouse_event(is_down)
                     last_state = is_down
-                self.thread_stop_event.wait(0.01)
+                self.thread_stop_event.wait(0.005)
             except Exception:
                 logging.exception("Mouse monitor loop error")
                 self.thread_stop_event.wait(1)
+
+    def _install_mouse_hook(self) -> bool:
+        try:
+            h_instance = kernel32.GetModuleHandleW(None)
+            self.mouse_hook_handle = user32.SetWindowsHookExW(WH_MOUSE_LL, self.mouse_hook_proc, h_instance, 0)
+            if self.mouse_hook_handle:
+                return True
+            logging.warning("Low-level mouse hook unavailable, falling back to polling")
+        except Exception:
+            logging.exception("Failed to install low-level mouse hook")
+        return False
+
+    def _uninstall_mouse_hook(self) -> None:
+        if not self.mouse_hook_handle:
+            return
+        try:
+            user32.UnhookWindowsHookEx(self.mouse_hook_handle)
+        except Exception:
+            logging.exception("Failed to unhook low-level mouse hook")
+        finally:
+            self.mouse_hook_handle = None
+
+    def _low_level_mouse_proc(self, n_code, w_param, l_param):
+        try:
+            if n_code >= 0:
+                if w_param in (WM_RBUTTONDOWN, WM_RBUTTONDBLCLK):
+                    self._handle_mouse_event(True)
+                elif w_param == WM_RBUTTONUP:
+                    self._handle_mouse_event(False)
+        except Exception:
+            logging.exception("Low-level mouse hook callback error")
+        return user32.CallNextHookEx(self.mouse_hook_handle, n_code, w_param, l_param)
 
     def _handle_mouse_event(self, is_down: bool) -> None:
         m = self.settings_manager.get('rmb_hide_mode', 'disabled')
@@ -385,6 +466,10 @@ class OverlayManager:
         self.thread_stop_event.set()
         self.render_event.set()
         self.hotkey_restart_event.set()
+        if self.hotkey_thread_id:
+            user32.PostThreadMessageW(self.hotkey_thread_id, WM_QUIT, 0, 0)
+        if self.mouse_thread_id:
+            user32.PostThreadMessageW(self.mouse_thread_id, WM_QUIT, 0, 0)
         self.command_queue.put(('hide', None))
         for t in [self.monitor_thread, self.render_thread, self.hotkey_thread, self.topmost_thread]:
             if t and t.is_alive() and t is not current_thread():

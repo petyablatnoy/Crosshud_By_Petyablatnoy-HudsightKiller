@@ -39,7 +39,30 @@ Item {
         onClicked: root.clicked()
     }
 
-    ToolTip.visible: mouse.containsMouse && root.tooltipText.length > 0
-    ToolTip.delay: 450
-    ToolTip.text: root.tooltipText
+    Rectangle {
+        id: tooltip
+        x: root.width + 8
+        y: Math.round((root.height - height) / 2)
+        z: 1000
+        width: tooltipLabel.implicitWidth + 18
+        height: 30
+        radius: 7
+        color: "#1E1F22"
+        border.color: "#404249"
+        border.width: 1
+        visible: mouse.containsMouse && root.tooltipText.length > 0
+        opacity: visible ? 1 : 0
+
+        Behavior on opacity { NumberAnimation { duration: 120 } }
+
+        Label {
+            id: tooltipLabel
+            anchors.centerIn: parent
+            text: root.tooltipText
+            color: "#F2F3F5"
+            font.pixelSize: 12
+            font.bold: true
+            elide: Text.ElideRight
+        }
+    }
 }
