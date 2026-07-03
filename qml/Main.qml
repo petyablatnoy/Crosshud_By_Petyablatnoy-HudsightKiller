@@ -49,8 +49,6 @@ ApplicationWindow {
         anchors.fill: parent
         color: "#313338"
         radius: 16
-        border.color: "#1E1F22"
-        border.width: 1
         clip: true
 
         ColumnLayout {
@@ -142,6 +140,16 @@ ApplicationWindow {
                     CustomPage { bridge: app.uiBridge }
                 }
             }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            z: 1000
+            radius: shell.radius
+            color: "transparent"
+            border.color: "#1E1F22"
+            border.width: 1
+            antialiasing: true
         }
     }
 
