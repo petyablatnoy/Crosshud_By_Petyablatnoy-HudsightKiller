@@ -7,11 +7,13 @@ Item {
 
     property string message: ""
     property string kind: "success"
+    property bool shown: false
 
     function show(text, toastKind) {
         message = text
         kind = toastKind
         toast.visible = true
+        shown = true
         hideTimer.restart()
     }
 
@@ -27,9 +29,19 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: 20
-        opacity: visible ? 1 : 0
+        opacity: root.shown ? 1 : 0
 
-        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 160
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        onOpacityChanged: {
+            if (!root.shown && opacity === 0)
+                visible = false
+        }
 
         Label {
             anchors.fill: parent
@@ -47,6 +59,6 @@ Item {
     Timer {
         id: hideTimer
         interval: 2600
-        onTriggered: toast.visible = false
+        onTriggered: root.shown = false
     }
 }
