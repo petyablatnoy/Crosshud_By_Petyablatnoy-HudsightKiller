@@ -10,6 +10,7 @@ from app_metadata import APP_FILE_VERSION, APP_NAME, APP_VERSION, APP_VERSION_TU
 BUILD_VENV = ".venv-build"
 VERSION_INFO_FILE = "version_info.txt"
 INSTALLER_VERSION_FILE = "installer_version.nsh"
+SETUP_FILE = os.path.join("dist", f"{APP_NAME}_Setup.exe")
 
 
 def build_python():
@@ -97,6 +98,31 @@ def sign():
     subprocess.run([shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script], check=True)
 
 
+def sign_installer():
+    if not os.path.exists(SETUP_FILE):
+        raise FileNotFoundError(SETUP_FILE)
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    if not shell:
+        raise FileNotFoundError("PowerShell executable not found")
+    command = (
+        "$ErrorActionPreference = 'Stop'; "
+        "$cert = Get-ChildItem Cert:\\CurrentUser\\My | "
+        "Where-Object { $_.Subject -match 'CrossHud_Permanent_Cert' } | "
+        "Select-Object -First 1; "
+        "if (-not $cert) { throw 'Code signing certificate not found' }; "
+        f"$signature = Set-AuthenticodeSignature -Certificate $cert -FilePath '{SETUP_FILE}' "
+        "-TimestampServer 'http://timestamp.digicert.com'; "
+        "if ($signature.Status -ne 'Valid') { "
+        "throw \"Installer signing failed: $($signature.Status) $($signature.StatusMessage)\" "
+        "}; "
+        f"$verify = Get-AuthenticodeSignature -FilePath '{SETUP_FILE}'; "
+        "if ($verify.Status -ne 'Valid') { "
+        "throw \"Installer signature verification failed: $($verify.Status) $($verify.StatusMessage)\" "
+        "}"
+    )
+    subprocess.run([shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], check=True)
+
+
 def pack():
     p86 = os.environ.get("ProgramFiles(x86)", "")
     p = os.environ.get("ProgramFiles", "")
@@ -118,6 +144,7 @@ def main():
         build(py)
         sign()
         pack()
+        sign_installer()
     except Exception as exc:
         print(f"Build failed: {exc}", file=sys.stderr)
         sys.exit(1)
