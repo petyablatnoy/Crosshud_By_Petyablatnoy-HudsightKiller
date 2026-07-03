@@ -67,6 +67,7 @@ Item {
                     DarkTextField {
                         id: widthField
                         text: String(root.setting("screen_width"))
+                        horizontalAlignment: TextInput.AlignHCenter
                         Layout.preferredWidth: 96
                         validator: IntValidator { bottom: 800; top: 7680 }
                     }
@@ -74,6 +75,7 @@ Item {
                     DarkTextField {
                         id: heightField
                         text: String(root.setting("screen_height"))
+                        horizontalAlignment: TextInput.AlignHCenter
                         Layout.preferredWidth: 96
                         validator: IntValidator { bottom: 600; top: 4320 }
                     }
