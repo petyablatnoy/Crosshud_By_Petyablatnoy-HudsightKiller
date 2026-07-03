@@ -120,97 +120,14 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 spacing: 0
 
-                Rectangle {
-                    id: sidebar
-                    Layout.preferredWidth: 56
-                    Layout.fillHeight: true
-                    color: "transparent"
-                    z: 30
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 16
-                        color: "#2B2D31"
-                    }
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        height: 18
-                        color: "#2B2D31"
-                    }
-
-                    Rectangle {
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        width: 18
-                        color: "#2B2D31"
-                    }
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.topMargin: 12
-                        anchors.bottomMargin: 12
-                        spacing: 0
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            IconButton {
-                                Layout.alignment: Qt.AlignHCenter
-                                iconSource: bridge.iconUrl("crosshair.svg")
-                                tooltipText: "Прицел"
-                                selected: app.currentPage === 0
-                                onClicked: app.currentPage = 0
-                            }
-                            IconButton {
-                                Layout.alignment: Qt.AlignHCenter
-                                iconSource: bridge.iconUrl("settings.svg")
-                                tooltipText: "Система"
-                                selected: app.currentPage === 1
-                                onClicked: app.currentPage = 1
-                            }
-                            IconButton {
-                                Layout.alignment: Qt.AlignHCenter
-                                iconSource: bridge.iconUrl("layout-grid.svg")
-                                tooltipText: "Кастомный прицел"
-                                selected: app.currentPage === 2
-                                onClicked: app.currentPage = 2
-                            }
-                        }
-
-                        Item { Layout.fillHeight: true }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            IconButton {
-                                Layout.alignment: Qt.AlignHCenter
-                                iconSource: bridge.iconUrl("save.svg")
-                                tooltipText: bridge.dirty ? "Сохранить настройки" : "Настройки сохранены"
-                                selected: bridge.dirty
-                                onClicked: app.saveClicked()
-                            }
-                            IconButton {
-                                Layout.alignment: Qt.AlignHCenter
-                                iconSource: bridge.iconUrl("rotate-ccw.svg")
-                                tooltipText: "Сбросить несохраненное"
-                                onClicked: bridge.resetSettings()
-                            }
-                            IconButton {
-                                id: powerButton
-                                Layout.alignment: Qt.AlignHCenter
-                                iconSource: bridge.iconUrl("power.svg")
-                                tooltipText: "Питание"
-                                tooltipEnabled: !app.powerMenuOpen
-                                onClicked: app.powerMenuOpen = !app.powerMenuOpen
-                            }
-                        }
-                    }
+                Sidebar {
+                    bridge: app.uiBridge
+                    currentPage: app.currentPage
+                    powerMenuOpen: app.powerMenuOpen
+                    onPageSelected: function(page) { app.currentPage = page }
+                    onSaveRequested: app.saveClicked()
+                    onResetRequested: bridge.resetSettings()
+                    onPowerRequested: app.powerMenuOpen = !app.powerMenuOpen
                 }
 
                 StackLayout {
