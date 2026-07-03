@@ -19,24 +19,12 @@ Rectangle {
 
     Rectangle {
         anchors.fill: parent
-        radius: 16
         color: "#2B2D31"
-    }
-
-    Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        height: 18
-        color: "#2B2D31"
-    }
-
-    Rectangle {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        width: 18
-        color: "#2B2D31"
+        topLeftRadius: 16
+        bottomLeftRadius: 16
+        topRightRadius: 0
+        bottomRightRadius: 0
+        antialiasing: true
     }
 
     ColumnLayout {
