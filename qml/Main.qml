@@ -73,26 +73,37 @@ ApplicationWindow {
                     anchors.rightMargin: 10
                     spacing: 8
 
-                    Label {
-                        text: "CROSSHUD"
-                        color: "#F2F3F5"
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
+                    Item {
+                        Layout.preferredWidth: brandTitle.implicitWidth + 8 + authorLink.implicitWidth
+                        Layout.preferredHeight: Math.max(brandTitle.implicitHeight, authorLink.implicitHeight)
+                        Layout.alignment: Qt.AlignVCenter
 
-                    Label {
-                        id: authorLink
-                        text: "by PetyaBlatnoy"
-                        color: authorMouse.containsMouse ? "#F2F3F5" : "#B5BAC1"
-                        font.pixelSize: 7
-                        verticalAlignment: Text.AlignVCenter
+                        Label {
+                            id: brandTitle
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "CROSSHUD"
+                            color: "#F2F3F5"
+                            font.pixelSize: 15
+                            font.bold: true
+                        }
 
-                        MouseArea {
-                            id: authorMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: bridge.openProjectPage()
+                        Label {
+                            id: authorLink
+                            anchors.left: brandTitle.right
+                            anchors.leftMargin: 8
+                            anchors.baseline: brandTitle.baseline
+                            text: "by PetyaBlatnoy"
+                            color: authorMouse.containsMouse ? "#F2F3F5" : "#B5BAC1"
+                            font.pixelSize: 10
+
+                            MouseArea {
+                                id: authorMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: bridge.openProjectPage()
+                            }
                         }
                     }
 
