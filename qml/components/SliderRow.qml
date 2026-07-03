@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 
 RowLayout {
@@ -37,7 +38,7 @@ RowLayout {
         Layout.preferredWidth: 46
     }
 
-    Slider {
+    Basic.Slider {
         id: slider
         from: root.from
         to: root.to

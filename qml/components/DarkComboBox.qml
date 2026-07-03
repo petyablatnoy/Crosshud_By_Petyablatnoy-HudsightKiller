@@ -1,12 +1,13 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 
-ComboBox {
+Basic.ComboBox {
     id: control
     implicitHeight: 30
     font.pixelSize: 12
 
-    delegate: ItemDelegate {
+    delegate: Basic.ItemDelegate {
         width: control.width
         height: 30
         highlighted: control.highlightedIndex === index

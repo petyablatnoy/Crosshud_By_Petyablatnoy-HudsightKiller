@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 
-TextField {
+Basic.TextField {
     id: control
     implicitHeight: 30
     color: "#F2F3F5"
