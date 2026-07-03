@@ -4,9 +4,12 @@ import subprocess
 import sys
 import venv
 
+from app_metadata import APP_FILE_VERSION, APP_NAME, APP_VERSION, APP_VERSION_TUPLE, FILE_DESCRIPTION
+
 
 BUILD_VENV = ".venv-build"
-APP_NAME = "CrossHud_By_PetyaBlatnoy"
+VERSION_INFO_FILE = "version_info.txt"
+INSTALLER_VERSION_FILE = "installer_version.nsh"
 
 
 def build_python():
@@ -30,6 +33,28 @@ def clean():
             shutil.rmtree(path)
 
 
+def write_build_metadata():
+    filevers = ",".join(str(part) for part in APP_VERSION_TUPLE)
+    with open(VERSION_INFO_FILE, "w", encoding="utf-8") as f:
+        f.write(
+            "VSVersionInfo(\n"
+            f"  ffi=FixedFileInfo(filevers=({filevers}), prodvers=({filevers}),\n"
+            "    mask=0x3f, flags=0x0, OS=0x4, fileType=0x1, subtype=0x0, date=(0, 0)),\n"
+            "  kids=[StringFileInfo([StringTable(u'040904B0', [\n"
+            f"    StringStruct(u'FileDescription', u'{FILE_DESCRIPTION}'),\n"
+            f"    StringStruct(u'FileVersion', u'{APP_FILE_VERSION}'),\n"
+            f"    StringStruct(u'ProductName', u'{APP_NAME}'),\n"
+            f"    StringStruct(u'ProductVersion', u'{APP_FILE_VERSION}')])]),\n"
+            "  VarFileInfo([VarStruct(u'Translation', [1033, 1200])])])\n"
+        )
+    with open(INSTALLER_VERSION_FILE, "w", encoding="utf-8") as f:
+        f.write(
+            f'!define APP_NAME "{APP_NAME}"\n'
+            f'!define APP_VERSION "{APP_VERSION}"\n'
+            f'!define EXE_NAME "{APP_NAME}.exe"\n'
+        )
+
+
 def build(py):
     cmd = [
         py,
@@ -43,7 +68,7 @@ def build(py):
         '--collect-binaries=PySide6',
         '--uac-uiaccess',
         '--icon=icon.ico',
-        '--version-file=version_info.txt',
+        f'--version-file={VERSION_INFO_FILE}',
         '--add-data=icon.ico;.',
         '--add-data=qml;qml',
         '--add-data=assets;assets',
@@ -88,6 +113,7 @@ def pack():
 def main():
     try:
         clean()
+        write_build_metadata()
         py = ensure_build_env()
         build(py)
         sign()

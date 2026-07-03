@@ -10,17 +10,19 @@ from PySide6.QtCore import QObject, Property, QThread, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
+from app_metadata import APP_VERSION, PROJECT_URL as PROJECT_PAGE_URL, UPDATE_API_URL, UPDATE_RELEASES_PATH
+from hotkeys import HOTKEY_NAMES
+
 
 class UpdateChecker(QThread):
     update_available = Signal(str)
 
     def run(self):
         try:
-            url = "https://api.github.com/repos/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller/releases/latest"
-            with urllib.request.urlopen(url, timeout=5) as response:
+            with urllib.request.urlopen(UPDATE_API_URL, timeout=5) as response:
                 data = json.loads(response.read().decode())
             latest_tag = data.get("tag_name", "")
-            if self.is_newer(latest_tag, "4"):
+            if self.is_newer(latest_tag, APP_VERSION):
                 self.update_available.emit(data.get("html_url", ""))
         except Exception:
             logging.debug("Update check failed", exc_info=True)
@@ -46,8 +48,8 @@ class UpdateChecker(QThread):
 
 
 class UiBridge(QObject):
-    UPDATE_REPO_PATH = "/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller/releases/"
-    PROJECT_URL = "https://github.com/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller"
+    UPDATE_REPO_PATH = UPDATE_RELEASES_PATH
+    PROJECT_URL = PROJECT_PAGE_URL
 
     revisionChanged = Signal()
     dirtyChanged = Signal()
@@ -101,6 +103,10 @@ class UiBridge(QObject):
     def updateUrl(self):
         return self._update_url
 
+    @Property(str, constant=True)
+    def hotkeysJson(self):
+        return json.dumps(HOTKEY_NAMES)
+
     @Slot(str, result="QVariant")
     def getSetting(self, key):
         return self.settings.get(key)
@@ -120,7 +126,10 @@ class UiBridge(QObject):
         if key == "dynamic_color" and bool(value):
             self.settings.set("rainbow_mode", False)
 
-        self.settings.set(key, value)
+        if not self.settings.set(key, value):
+            self.bump_revision()
+            self.show_toast("Настройка отклонена", "warning")
+            return
         if key == "enabled":
             if self.settings.get("enabled", False):
                 self.overlay.show()
@@ -155,7 +164,10 @@ class UiBridge(QObject):
         except json.JSONDecodeError:
             self.show_toast("Неверный формат пикселей", "error")
             return
-        self.settings.set("custom_pixels", pixels)
+        if not self.settings.set("custom_pixels", pixels):
+            self.show_toast("Неверный формат пикселей", "error")
+            self.bump_revision()
+            return
         self.overlay.refresh()
         self.mark_dirty()
         self.bump_revision()
@@ -223,7 +235,10 @@ class UiBridge(QObject):
                     winreg.DeleteValue(key, "CrossHud_PetyaBlatnoy")
                 except FileNotFoundError:
                     pass
-            self.settings.set("autostart", state)
+            if not self.settings.set("autostart", state):
+                self.show_toast("Не удалось изменить автозапуск", "error")
+                self.bump_revision()
+                return
             self.mark_dirty()
             self.bump_revision()
         except Exception:
@@ -240,7 +255,10 @@ class UiBridge(QObject):
         templates = self.settings.get("custom_templates", [])
         if index < 0 or index >= len(templates):
             return
-        self.settings.set("custom_pixels", templates[index].get("pixels", []))
+        if not self.settings.set("custom_pixels", templates[index].get("pixels", [])):
+            self.show_toast("Не удалось загрузить шаблон", "error")
+            self.bump_revision()
+            return
         self.overlay.refresh()
         self.mark_dirty()
         self.bump_revision()

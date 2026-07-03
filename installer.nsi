@@ -1,7 +1,5 @@
 Unicode true
-!define APP_NAME "CrossHud_By_PetyaBlatnoy"
-!define APP_VERSION "4"
-!define EXE_NAME "CrossHud_By_PetyaBlatnoy.exe"
+!include "installer_version.nsh"
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 Name "CrossHud Setup"

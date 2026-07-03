@@ -190,10 +190,8 @@ Item {
 
                         MouseArea {
                             anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             preventStealing: true
-                            property real lastX: 0
-                            property real lastY: 0
 
                             function apply(mouse) {
                                 var gx = Math.floor(mouse.x / root.zoom)
@@ -207,21 +205,11 @@ Item {
                             }
 
                             onPressed: function(mouse) {
-                                lastX = mouse.x
-                                lastY = mouse.y
-                                if (mouse.button !== Qt.MiddleButton)
-                                    apply(mouse)
+                                apply(mouse)
                             }
                             onPositionChanged: function(mouse) {
-                                if (mouse.buttons & Qt.MiddleButton) {
-                                    editorFlick.smoothWheel = false
-                                    editorFlick.contentX = editorFlick.clampX(editorFlick.contentX - (mouse.x - lastX))
-                                    editorFlick.contentY = editorFlick.clampY(editorFlick.contentY - (mouse.y - lastY))
-                                    lastX = mouse.x
-                                    lastY = mouse.y
-                                } else if (pressed) {
+                                if (pressed)
                                     apply(mouse)
-                                }
                             }
                             onWheel: function(wheel) {
                                 if (wheel.modifiers & Qt.ControlModifier) {
@@ -241,6 +229,29 @@ Item {
                                 editorFlick.contentY = editorFlick.clampY(editorFlick.contentY + dy)
                                 wheelSmoothingReset.restart()
                                 wheel.accepted = true
+                            }
+                        }
+
+                        DragHandler {
+                            id: panHandler
+                            acceptedButtons: Qt.MiddleButton
+                            target: null
+                            property real startContentX: 0
+                            property real startContentY: 0
+
+                            onActiveChanged: {
+                                if (active) {
+                                    editorFlick.smoothWheel = false
+                                    startContentX = editorFlick.contentX
+                                    startContentY = editorFlick.contentY
+                                }
+                            }
+
+                            onTranslationChanged: {
+                                if (active) {
+                                    editorFlick.contentX = editorFlick.clampX(startContentX - translation.x)
+                                    editorFlick.contentY = editorFlick.clampY(startContentY - translation.y)
+                                }
                             }
                         }
                     }

@@ -27,7 +27,7 @@ class CrosshairRendererTests(unittest.TestCase):
 
         self.assertEqual(image.size, (128, 128))
         self.assertEqual(len(data), 128 * 128 * 4)
-        self.assertGreater(max(image.getchannel("A").getdata()), 0)
+        self.assertGreater(image.getchannel("A").getextrema()[1], 0)
 
 if __name__ == "__main__":
     unittest.main()

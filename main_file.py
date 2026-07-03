@@ -6,12 +6,14 @@ import ctypes
 from logging.handlers import RotatingFileHandler
 from PySide6.QtCore import QCoreApplication
 
+from app_metadata import APP_NAME, APP_USER_MODEL_ID, APP_VERSION
+
 
 LOG_MAX_BYTES = int(7.5 * 1024 * 1024)
 LOG_BACKUP_COUNT = 4
 
 try:
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("PetyaBlatnoy.CrossHud.App.4")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
 except Exception:
     pass
 
@@ -71,12 +73,12 @@ def setup_paths():
         sys.path.insert(0, application_path)
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='CrossHud_By_PetyaBlatnoy')
+    parser = argparse.ArgumentParser(description=APP_NAME)
     parser.add_argument('--profile', help='Load specific profile')
     parser.add_argument('--minimize', action='store_true', help='Start minimized')
     parser.add_argument('--enable', action='store_true', help='Enable crosshair on start')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
-    parser.add_argument('--version', action='version', version='4')
+    parser.add_argument('--version', action='version', version=APP_VERSION)
     return parser.parse_args()
 
 def handle_exception(exc_type, exc_value, exc_traceback):

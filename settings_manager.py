@@ -6,15 +6,14 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 from threading import Lock
 
+from app_metadata import APP_VERSION
+from hotkeys import HOTKEY_NAMES
+
 
 class SettingsManager:
-    CURRENT_VERSION = "4"
+    CURRENT_VERSION = APP_VERSION
     MAX_CUSTOM_PIXELS = 101 * 101
-    HOTKEYS = {
-        'Insert', 'Home', 'End', 'PageUp', 'PageDown',
-        'F1', 'F2', 'F3', 'F4', 'F5', 'F6',
-        'F7', 'F8', 'F9', 'F10', 'F11', 'F12'
-    }
+    HOTKEYS = set(HOTKEY_NAMES)
     COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
     DEFAULT_SETTINGS = {
@@ -254,14 +253,17 @@ class SettingsManager:
         with self.lock:
             return self.settings.get(key, default)
 
-    def set(self, key: str, value: Any) -> None:
-        if key in self.DEFAULT_SETTINGS:
-            normalized = self._normalize_settings({key: value}, partial=True, source="runtime")
-            if key not in normalized:
-                return
-            value = normalized[key]
+    def set(self, key: str, value: Any) -> bool:
+        if key not in self.DEFAULT_SETTINGS:
+            self._warn(f"runtime: неизвестная настройка '{key}' отклонена.")
+            return False
+        normalized = self._normalize_settings({key: value}, partial=True, source="runtime")
+        if key not in normalized:
+            return False
+        value = normalized[key]
         with self.lock:
             self.settings[key] = value
+        return True
 
     def _profile_path(self, filename: str) -> str:
         os.makedirs(self.profiles_dir, exist_ok=True)

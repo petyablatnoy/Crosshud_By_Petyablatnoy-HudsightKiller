@@ -74,6 +74,14 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(data["custom_pixels"], [[2, 2, "#FF0000"]])
         self.assertFalse(manager.has_unsaved_custom_pixels())
 
+    def test_unknown_runtime_setting_is_rejected(self):
+        manager, _ = self.create_manager({})
+
+        self.assertFalse(manager.set("unexpected_key", "value"))
+
+        self.assertIsNone(manager.get("unexpected_key"))
+        self.assertTrue(manager.consume_warnings())
+
 
 if __name__ == "__main__":
     unittest.main()

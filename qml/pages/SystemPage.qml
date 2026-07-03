@@ -8,7 +8,7 @@ Item {
     property var bridge
     property var rmbLabels: ["Ничего", "Скрывать (Hold)", "Переключать (Toggle)"]
     property var rmbValues: ["disabled", "hold", "toggle"]
-    property var hotkeys: ["Insert", "Home", "End", "PageUp", "PageDown", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"]
+    property var hotkeys: []
     property var resolutionLabels: ["HD 1280x720", "Full HD 1920x1080", "QHD 2560x1440", "4K 3840x2160", "Свой размер"]
     property var resolutionValues: [[1280, 720], [1920, 1080], [2560, 1440], [3840, 2160], [0, 0]]
 
@@ -25,6 +25,14 @@ Item {
                 return i
         }
         return root.resolutionValues.length - 1
+    }
+
+    Component.onCompleted: {
+        try {
+            hotkeys = JSON.parse(bridge.hotkeysJson)
+        } catch (e) {
+            hotkeys = ["Insert"]
+        }
     }
 
     PageFlickable {

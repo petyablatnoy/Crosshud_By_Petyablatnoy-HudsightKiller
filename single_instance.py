@@ -4,9 +4,11 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
+from app_metadata import SINGLE_INSTANCE_SERVER_NAME
+
 
 class SingleInstanceManager(QObject):
-    SERVER_NAME = "CrossHud_By_PetyaBlatnoy_4"
+    SERVER_NAME = SINGLE_INSTANCE_SERVER_NAME
     COMMAND_SHOW = b"show\n"
 
     def __init__(self, parent: Optional[QObject] = None):
