@@ -199,42 +199,79 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
+
                     Label {
-                        text: "Данные для обращения в поддержку"
+                        text: "Отправьте отчет в Telegram @petyablatnoy"
                         color: "#F2F3F5"
                         Layout.fillWidth: true
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
                     }
                     ActionButton {
                         text: "UID"
                         onClicked: bridge.copyClientId()
                     }
                     ActionButton {
-                        text: "Скопировать"
-                        highlighted: true
+                        text: "Текст"
                         onClicked: bridge.copyDiagnostics()
+                    }
+                    ActionButton {
+                        text: "ZIP"
+                        highlighted: true
+                        onClicked: bridge.createSupportArchive()
                     }
                 }
 
-                Repeater {
-                    model: root.diagnosticsRows()
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: diagnosticsColumn.implicitHeight + 2
+                    radius: 6
+                    color: "#24262A"
+                    border.color: "#17181B"
+                    border.width: 1
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
+                    ColumnLayout {
+                        id: diagnosticsColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 0
 
-                        Label {
-                            text: modelData.label
-                            color: "#B5BAC1"
-                            Layout.preferredWidth: 96
-                            font.pixelSize: 12
-                        }
+                        Repeater {
+                            model: root.diagnosticsRows()
 
-                        Label {
-                            text: modelData.value
-                            color: "#F2F3F5"
-                            Layout.fillWidth: true
-                            font.pixelSize: 12
-                            elide: Text.ElideMiddle
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: Math.max(30, valueLabel.implicitHeight + 12)
+                                color: index % 2 === 0 ? "#24262A" : "#272A2F"
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 12
+                                    spacing: 14
+
+                                    Label {
+                                        text: modelData.label
+                                        color: "#949BA4"
+                                        Layout.preferredWidth: 154
+                                        font.family: "Consolas"
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Label {
+                                        id: valueLabel
+                                        text: modelData.value
+                                        color: "#E3E6EA"
+                                        Layout.fillWidth: true
+                                        font.family: "Consolas"
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WrapAnywhere
+                                    }
+                                }
+                            }
                         }
                     }
                 }

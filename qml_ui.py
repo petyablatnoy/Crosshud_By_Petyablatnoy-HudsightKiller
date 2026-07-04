@@ -437,6 +437,20 @@ class UiBridge(QObject):
             self.show_toast("Сведения скопированы", "success")
 
     @Slot()
+    def createSupportArchive(self):
+        try:
+            archive_path = self.diagnostics.create_support_archive()
+            clipboard = QGuiApplication.clipboard()
+            if clipboard:
+                clipboard.setText(archive_path)
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(archive_path)))
+            logging.info("Support archive created: %s", archive_path)
+            self.show_toast("Отчет создан, путь скопирован", "success")
+        except Exception:
+            logging.exception("Failed to create support archive")
+            self.show_toast("Не удалось создать отчет", "error")
+
+    @Slot()
     def showStartupWarnings(self):
         warnings = self.settings.consume_warnings()
         if warnings:
