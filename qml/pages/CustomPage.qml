@@ -153,19 +153,13 @@ Item {
     }
 
     Shortcut {
-        sequences: StandardKey.Undo
+        sequences: ["Ctrl+Z"]
         enabled: root.visible
         onActivated: root.undo()
     }
 
     Shortcut {
-        sequences: StandardKey.Redo
-        enabled: root.visible
-        onActivated: root.redo()
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Shift+Z"
+        sequences: ["Ctrl+Y", "Ctrl+Shift+Z"]
         enabled: root.visible
         onActivated: root.redo()
     }
