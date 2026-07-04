@@ -35,7 +35,6 @@ Item {
     }
 
     function diagnosticsRows() {
-        bridge.revision
         try {
             return JSON.parse(bridge.diagnosticsJson)
         } catch (e) {

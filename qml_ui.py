@@ -136,6 +136,7 @@ class UiBridge(QObject):
     dirtyChanged = Signal()
     templatesChanged = Signal()
     logsChanged = Signal()
+    diagnosticsChanged = Signal()
     updateUrlChanged = Signal()
     updateInstallChanged = Signal()
     toastRequested = Signal(str, str)
@@ -194,7 +195,7 @@ class UiBridge(QObject):
     def logsPath(self):
         return self.log_file_path()
 
-    @Property(str, notify=revisionChanged)
+    @Property(str, notify=diagnosticsChanged)
     def diagnosticsJson(self):
         return self.diagnostics.rows_json()
 

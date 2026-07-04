@@ -80,6 +80,15 @@ class DiagnosticServiceTests(unittest.TestCase):
 
             self.assertEqual(service._video_info_cache, [])
 
+    def test_rows_reuse_cached_system_queries(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            service = DiagnosticService(temp_dir, "", "")
+            with mock.patch.object(service, "_powershell_json", return_value=None) as query:
+                service.rows()
+                service.rows()
+
+            self.assertLessEqual(query.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

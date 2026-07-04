@@ -38,6 +38,10 @@ Item {
         canvas.requestPaint()
     }
 
+    function updateCanvasOnly() {
+        canvas.requestPaint()
+    }
+
     function syncHistoryDepths() {
         undoDepth = undoStack.length
         redoDepth = redoStack.length
@@ -58,8 +62,11 @@ Item {
     }
 
     function finishEdit() {
+        var changed = editSnapshot && editSnapshot !== JSON.stringify(pixels)
         pushUndoSnapshot(editSnapshot)
         editSnapshot = ""
+        if (changed)
+            commitPixels()
     }
 
     function restorePixels(snapshot) {
@@ -123,21 +130,28 @@ Item {
         var px = gx - center
         var py = gy - center
         for (var i = pixels.length - 1; i >= 0; i--) {
-            if (pixels[i][0] === px && pixels[i][1] === py)
+            if (pixels[i][0] === px && pixels[i][1] === py) {
+                if (pixels[i][2] === color)
+                    return
                 pixels.splice(i, 1)
+            }
         }
         pixels.push([px, py, color])
-        commitPixels()
+        updateCanvasOnly()
     }
 
     function erasePixel(gx, gy) {
         var px = gx - center
         var py = gy - center
+        var changed = false
         for (var i = pixels.length - 1; i >= 0; i--) {
-            if (pixels[i][0] === px && pixels[i][1] === py)
+            if (pixels[i][0] === px && pixels[i][1] === py) {
                 pixels.splice(i, 1)
+                changed = true
+            }
         }
-        commitPixels()
+        if (changed)
+            updateCanvasOnly()
     }
 
     Component.onCompleted: {

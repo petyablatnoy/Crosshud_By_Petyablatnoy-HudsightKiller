@@ -22,6 +22,10 @@ class DiagnosticService:
         self.log_file = log_file
         self.settings = settings
         self._video_info_cache: Optional[List[Dict[str, Any]]] = None
+        self._cpu_name_cache: Optional[str] = None
+        self._total_memory_cache: Optional[str] = None
+        self._monitor_info_cache: Optional[List[Dict[str, Any]]] = None
+        self._system_dpi_cache: Optional[str] = None
 
     def client_id(self) -> str:
         os.makedirs(self.app_data_dir, exist_ok=True)
@@ -117,6 +121,10 @@ class DiagnosticService:
         return f"{release} ({version})" if version else release
 
     def _cpu_name(self) -> str:
+        if self._cpu_name_cache is not None:
+            return self._cpu_name_cache
+
+        self._cpu_name_cache = platform.processor() or "недоступно"
         if os.name == "nt":
             value = self._powershell_json(
                 "Get-CimInstance Win32_Processor | "
@@ -133,10 +141,14 @@ class DiagnosticService:
                     parts.append(f"{cores}C/{logical}T")
                 if clock:
                     parts.append(f"{clock} MHz")
-                return ", ".join(parts)
-        return platform.processor() or "недоступно"
+                self._cpu_name_cache = ", ".join(parts)
+        return self._cpu_name_cache
 
     def _total_memory(self) -> str:
+        if self._total_memory_cache is not None:
+            return self._total_memory_cache
+
+        self._total_memory_cache = "недоступно"
         try:
             if os.name == "nt":
                 import ctypes
@@ -159,10 +171,10 @@ class DiagnosticService:
                 if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
                     total_gb = status.ullTotalPhys / (1024 ** 3)
                     available_gb = status.ullAvailPhys / (1024 ** 3)
-                    return f"{total_gb:.1f} GB total, {available_gb:.1f} GB free"
+                    self._total_memory_cache = f"{total_gb:.1f} GB total, {available_gb:.1f} GB free"
         except Exception:
             pass
-        return "недоступно"
+        return self._total_memory_cache
 
     def _video_names(self) -> str:
         names = [item.get("Name", "") for item in self._video_info() if item.get("Name")]
@@ -203,6 +215,10 @@ class DiagnosticService:
             return "недоступно"
 
     def _system_dpi(self) -> str:
+        if self._system_dpi_cache is not None:
+            return self._system_dpi_cache
+
+        self._system_dpi_cache = "недоступно"
         try:
             import ctypes
             user32 = ctypes.windll.user32
@@ -216,10 +232,10 @@ class DiagnosticService:
                 finally:
                     user32.ReleaseDC(None, dc)
             if dpi > 0:
-                return f"{dpi} ({round(dpi / 96 * 100)}%)"
+                self._system_dpi_cache = f"{dpi} ({round(dpi / 96 * 100)}%)"
         except Exception:
             pass
-        return "недоступно"
+        return self._system_dpi_cache
 
     def _monitor_summary(self) -> str:
         monitors = self._monitor_info()
@@ -236,8 +252,12 @@ class DiagnosticService:
         return "; ".join(parts)
 
     def _monitor_info(self) -> List[Dict[str, Any]]:
+        if self._monitor_info_cache is not None:
+            return self._monitor_info_cache
+
+        self._monitor_info_cache = []
         if os.name != "nt":
-            return []
+            return self._monitor_info_cache
         try:
             import ctypes
             from ctypes import wintypes
@@ -287,9 +307,10 @@ class DiagnosticService:
                 return 1
 
             user32.EnumDisplayMonitors(None, None, monitor_enum_proc(callback), 0)
-            return monitors
+            self._monitor_info_cache = monitors
         except Exception:
-            return []
+            self._monitor_info_cache = []
+        return self._monitor_info_cache
 
     def _crosshair_settings_summary(self) -> str:
         snapshot = self._settings_snapshot()
