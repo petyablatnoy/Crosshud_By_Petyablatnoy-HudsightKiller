@@ -15,7 +15,7 @@ Item {
     Timer {
         interval: 1000
         repeat: true
-        running: root.visible && Window.window && Window.window.visible && Window.window.visibility !== Window.Minimized
+        running: root.visible && root.Window.window && root.Window.window.visible && root.Window.window.visibility !== Window.Minimized
         onTriggered: bridge.refreshLogs()
     }
 

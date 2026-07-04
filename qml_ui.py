@@ -71,10 +71,9 @@ class UiBridge(QObject):
         self._update_url = ""
         self._logs_text = ""
         self._update_thread = None
+        self._update_check_started = False
         self.update_dirty_state()
         self.refresh_logs()
-        if self.settings.get("check_updates", True):
-            self.start_update_check()
 
     @Property(int, notify=revisionChanged)
     def revision(self):
@@ -336,6 +335,13 @@ class UiBridge(QObject):
         self.toastRequested.emit(text, kind)
 
     def start_update_check(self):
+        if self._update_check_started:
+            return
+        if not self.settings.get("check_updates", True):
+            logging.info("Update check skipped: disabled in settings")
+            return
+        self._update_check_started = True
+        logging.info("Update check started")
         self._update_thread = UpdateChecker(self)
         self._update_thread.update_available.connect(self._on_update_available)
         self._update_thread.start()
@@ -432,6 +438,9 @@ class QmlWindowController(QObject):
 
     def request_exit(self):
         self.bridge.requestExit()
+
+    def start_update_check(self):
+        self.bridge.start_update_check()
 
     def confirm_save_custom_pixels_on_exit(self):
         self.request_exit()

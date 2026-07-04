@@ -132,6 +132,7 @@ class CrossHudApp:
     def run(self, start_minimized=False):
         def startup_logic():
             self.setup_tray()
+            self.window.start_update_check()
             if not start_minimized:
                 self.window.show()
                 self.window.raise_()
