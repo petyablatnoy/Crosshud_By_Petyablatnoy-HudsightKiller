@@ -30,6 +30,7 @@ class CrossHudApp:
         self.window.exit_confirmed.connect(self._schedule_exit)
         self.single_instance = None
         self.tray = None
+        self.notification_url = ""
         self.exiting = False
         self.res = ResolutionDetector.get_resolution()
         self.settings.set_resolution(*self.res)
@@ -68,16 +69,20 @@ class CrossHudApp:
         logging.info("System tray initialized")
 
     def on_notification_click(self):
-        self.show_main_window()
+        if self.notification_url:
+            self.window.bridge.openUpdate()
+        else:
+            self.show_main_window()
 
     def on_tray_click(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.toggle_window()
 
     def show_notification(self, title, msg, url=None):
-        if url: self.update_url = url
+        if url:
+            self.notification_url = url
         if self.tray and self.tray.isVisible():
-            self.tray.showMessage(title, msg, QSystemTrayIcon.Information, 5000)
+            self.tray.showMessage(title, msg, QSystemTrayIcon.Information, 7000)
 
     def toggle_window(self):
         if self.window.isVisible():

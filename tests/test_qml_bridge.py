@@ -138,6 +138,10 @@ class UiBridgeTests(unittest.TestCase):
         self.assertFalse(UpdateChecker.is_newer("v4.0.0", "4"))
         self.assertTrue(UpdateChecker.is_newer("v4.1.0", "4"))
 
+    def test_update_checker_display_version(self):
+        self.assertEqual(UpdateChecker.display_version("Crosshud_By_Petyablatnoy_SetupV.3.1"), "3.1")
+        self.assertEqual(UpdateChecker.display_version("v4.0.0"), "4")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,7 @@ from hotkeys import HOTKEY_NAMES
 
 
 class UpdateChecker(QThread):
-    update_available = Signal(str)
+    update_available = Signal(str, str)
 
     def run(self):
         try:
@@ -23,22 +23,30 @@ class UpdateChecker(QThread):
                 data = json.loads(response.read().decode())
             latest_tag = data.get("tag_name", "")
             if self.is_newer(latest_tag, APP_VERSION):
-                self.update_available.emit(data.get("html_url", ""))
+                self.update_available.emit(data.get("html_url", ""), self.display_version(latest_tag))
         except Exception:
             logging.debug("Update check failed", exc_info=True)
 
     @staticmethod
+    def parse_version(v_str):
+        import re
+        match = re.search(r"(\d+(?:\.\d+)*)", v_str)
+        if match:
+            return [int(x) for x in match.group(1).split(".")]
+        return [0]
+
+    @staticmethod
+    def display_version(v_str):
+        parts = UpdateChecker.parse_version(v_str)
+        while len(parts) > 1 and parts[-1] == 0:
+            parts.pop()
+        return ".".join(str(part) for part in parts)
+
+    @staticmethod
     def is_newer(latest_str, current_str):
         try:
-            def parse_version(v_str):
-                import re
-                match = re.search(r"(\d+(?:\.\d+)*)", v_str)
-                if match:
-                    return [int(x) for x in match.group(1).split(".")]
-                return [0]
-
-            latest = parse_version(latest_str)
-            current = parse_version(current_str)
+            latest = UpdateChecker.parse_version(latest_str)
+            current = UpdateChecker.parse_version(current_str)
             max_len = max(len(latest), len(current))
             latest += [0] * (max_len - len(latest))
             current += [0] * (max_len - len(current))
@@ -69,6 +77,7 @@ class UiBridge(QObject):
         self._revision = 0
         self._dirty = False
         self._update_url = ""
+        self._update_version = ""
         self._logs_text = ""
         self._update_thread = None
         self._update_check_started = False
@@ -102,6 +111,10 @@ class UiBridge(QObject):
     @Property(str, notify=updateUrlChanged)
     def updateUrl(self):
         return self._update_url
+
+    @Property(str, notify=updateUrlChanged)
+    def updateVersion(self):
+        return self._update_version
 
     @Property(str, constant=True)
     def hotkeysJson(self):
@@ -346,14 +359,15 @@ class UiBridge(QObject):
         self._update_thread.update_available.connect(self._on_update_available)
         self._update_thread.start()
 
-    def _on_update_available(self, url):
+    def _on_update_available(self, url, version):
         if not self._is_valid_update_url(url):
             logging.warning("Ignored unexpected update URL: %s", url)
             return
         self._update_url = url
+        self._update_version = version
         self.updateUrlChanged.emit()
-        self.show_toast("Доступно обновление", "success")
-        self.notifyUpdate.emit("Доступно обновление!", "Вышла новая версия CrossHud. Нажмите, чтобы скачать.", url)
+        logging.info("Update available: version=%s url=%s", version, url)
+        self.notifyUpdate.emit("Доступна новая версия", f"CrossHud {version}. Нажмите, чтобы открыть релиз.", url)
 
     def _is_valid_update_url(self, url):
         try:

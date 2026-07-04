@@ -18,6 +18,7 @@ ApplicationWindow {
     property int currentPage: 0
     property var uiBridge: null
     property bool powerMenuOpen: false
+    property bool updateBannerDismissed: false
 
     Component.onCompleted: uiBridge = bridge
 
@@ -37,6 +38,7 @@ ApplicationWindow {
         target: app.uiBridge
         function onToastRequested(text, kind) { toastLayer.show(text, kind) }
         function onExitSavePrompt() { exitSaveDialog.open() }
+        function onUpdateUrlChanged() { app.updateBannerDismissed = false }
     }
 
     Timer {
@@ -205,6 +207,50 @@ ApplicationWindow {
     ToastLayer {
         id: toastLayer
         anchors.fill: parent
+    }
+
+    Rectangle {
+        id: updateBanner
+        x: 72
+        y: 44
+        width: parent.width - 96
+        height: 44
+        z: 18
+        visible: app.uiBridge && app.uiBridge.updateUrl.length > 0 && !app.updateBannerDismissed
+        radius: 8
+        color: "#232428"
+        border.color: "#5865F2"
+        border.width: 1
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 14
+            anchors.rightMargin: 10
+            spacing: 12
+
+            Label {
+                text: {
+                    var version = app.uiBridge ? app.uiBridge.updateVersion : ""
+                    return "Доступна новая версия CrossHud" + (version.length > 0 ? " " + version : "")
+                }
+                color: "#F2F3F5"
+                font.pixelSize: 13
+                font.bold: true
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+
+            ActionButton {
+                text: "Скачать"
+                highlighted: true
+                onClicked: app.uiBridge.openUpdate()
+            }
+
+            ActionButton {
+                text: "Позже"
+                onClicked: app.updateBannerDismissed = true
+            }
+        }
     }
 
     Item {
