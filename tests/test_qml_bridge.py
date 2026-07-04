@@ -75,6 +75,27 @@ class UiBridgeTests(unittest.TestCase):
         self.assertTrue(bridge.saveSettings(False))
         self.assertFalse(bridge.dirty)
 
+    def test_reverting_setting_to_saved_value_clears_dirty(self):
+        bridge, settings, _ = self.create_bridge()
+
+        bridge.setSetting("size", 42)
+        self.assertTrue(bridge.dirty)
+
+        bridge.setSetting("size", 20)
+        self.assertFalse(bridge.dirty)
+
+    def test_saving_without_custom_pixels_keeps_pixel_changes_dirty(self):
+        bridge, settings, _ = self.create_bridge()
+
+        bridge.setCustomPixelsJson(json.dumps([[1, 1, "#00FF00"]]))
+        self.assertTrue(bridge.dirty)
+
+        self.assertTrue(bridge.saveSettings(False))
+        self.assertTrue(bridge.dirty)
+
+        self.assertTrue(bridge.saveSettings(True))
+        self.assertFalse(bridge.dirty)
+
     def test_reset_settings_reloads_saved_values(self):
         bridge, settings, overlay = self.create_bridge()
         bridge.setSetting("size", 55)

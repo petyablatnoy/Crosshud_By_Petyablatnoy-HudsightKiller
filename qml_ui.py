@@ -71,6 +71,7 @@ class UiBridge(QObject):
         self._update_url = ""
         self._logs_text = ""
         self._update_thread = None
+        self.update_dirty_state()
         self.refresh_logs()
         if self.settings.get("check_updates", True):
             self.start_update_check()
@@ -141,7 +142,7 @@ class UiBridge(QObject):
             self.overlay.request_recreation()
         else:
             self.overlay.refresh()
-        self.mark_dirty()
+        self.update_dirty_state()
         self.bump_revision()
 
     @Slot(int, int, result=bool)
@@ -153,7 +154,7 @@ class UiBridge(QObject):
             self.bump_revision()
             return False
         self.overlay.request_recreation()
-        self.mark_dirty()
+        self.update_dirty_state()
         self.bump_revision()
         return True
 
@@ -169,14 +170,13 @@ class UiBridge(QObject):
             self.bump_revision()
             return
         self.overlay.refresh()
-        self.mark_dirty()
+        self.update_dirty_state()
         self.bump_revision()
 
     @Slot(bool, result=bool)
     def saveSettings(self, include_custom_pixels=False):
         if self.settings.save_settings(include_custom_pixels=include_custom_pixels):
-            self._dirty = False
-            self.dirtyChanged.emit()
+            self.update_dirty_state()
             self.bump_revision()
             self.show_toast("Настройки сохранены", "success")
             return True
@@ -189,8 +189,7 @@ class UiBridge(QObject):
             self.show_toast("Не удалось сбросить настройки", "error")
             return False
         self.overlay.refresh()
-        self._dirty = False
-        self.dirtyChanged.emit()
+        self.update_dirty_state()
         self.bump_revision()
         self.settings.load_templates_from_disk()
         self.templatesChanged.emit()
@@ -203,20 +202,21 @@ class UiBridge(QObject):
 
     @Slot()
     def requestExit(self):
-        if self.settings.has_unsaved_custom_pixels():
+        if self.settings.has_unsaved_settings():
             self.exitSavePrompt.emit()
             return
-        self.settings.save_settings(include_custom_pixels=False)
         self.exitConfirmed.emit()
 
     @Slot(bool, bool)
     def confirmExit(self, proceed, include_custom_pixels):
         if not proceed:
             return
-        if self.settings.save_settings(include_custom_pixels=include_custom_pixels):
-            self.exitConfirmed.emit()
-        else:
+        if include_custom_pixels and not self.settings.save_settings(include_custom_pixels=True):
             self.show_toast("Не удалось сохранить настройки", "error")
+            return
+        self._dirty = False
+        self.dirtyChanged.emit()
+        self.exitConfirmed.emit()
 
     @Slot(bool)
     def setAutostart(self, state):
@@ -239,7 +239,7 @@ class UiBridge(QObject):
                 self.show_toast("Не удалось изменить автозапуск", "error")
                 self.bump_revision()
                 return
-            self.mark_dirty()
+            self.update_dirty_state()
             self.bump_revision()
         except Exception:
             logging.exception("Failed to update autostart")
@@ -260,7 +260,7 @@ class UiBridge(QObject):
             self.bump_revision()
             return
         self.overlay.refresh()
-        self.mark_dirty()
+        self.update_dirty_state()
         self.bump_revision()
         self.show_toast("Шаблон загружен", "success")
 
@@ -317,9 +317,10 @@ class UiBridge(QObject):
     def openProjectPage(self):
         QDesktopServices.openUrl(QUrl(self.PROJECT_URL))
 
-    def mark_dirty(self):
-        if not self._dirty:
-            self._dirty = True
+    def update_dirty_state(self):
+        dirty = self.settings.has_unsaved_settings()
+        if self._dirty != dirty:
+            self._dirty = dirty
             self.dirtyChanged.emit()
 
     def bump_revision(self):

@@ -74,6 +74,17 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(data["custom_pixels"], [[2, 2, "#FF0000"]])
         self.assertFalse(manager.has_unsaved_custom_pixels())
 
+    def test_unsaved_settings_tracks_reverted_values(self):
+        manager, _ = self.create_manager({"size": 20})
+
+        self.assertFalse(manager.has_unsaved_settings())
+
+        self.assertTrue(manager.set("size", 42))
+        self.assertTrue(manager.has_unsaved_settings())
+
+        self.assertTrue(manager.set("size", 20))
+        self.assertFalse(manager.has_unsaved_settings())
+
     def test_unknown_runtime_setting_is_rejected(self):
         manager, _ = self.create_manager({})
 

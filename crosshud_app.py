@@ -103,6 +103,8 @@ class CrossHudApp:
         self.overlay.request_recreation()
 
     def exit_app(self):
+        if self.window.bridge.dirty:
+            self.show_main_window()
         self.window.request_exit()
 
     def _finish_exit(self):

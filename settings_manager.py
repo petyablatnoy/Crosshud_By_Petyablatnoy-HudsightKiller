@@ -72,6 +72,7 @@ class SettingsManager:
         self.settings['custom_templates'] = []
         self._warnings: List[str] = []
         self._saved_custom_pixels_snapshot: List[List[Any]] = []
+        self._saved_settings_snapshot: Dict[str, Any] = {}
         self.app_data_dir = os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy")
         self.profiles_dir = os.path.join(self.app_data_dir, "profiles")
         self.is_profile_load = bool(settings_file)
@@ -116,6 +117,7 @@ class SettingsManager:
             with self.lock:
                 self.settings.update(normalized)
                 self._saved_custom_pixels_snapshot = copy.deepcopy(self.settings.get('custom_pixels', []))
+                self._saved_settings_snapshot = self._persistable_settings_snapshot()
             os.rename(found_old_config, found_old_config + ".old")
         except Exception:
             logging.exception("Failed to migrate old config")
@@ -132,6 +134,7 @@ class SettingsManager:
                 self.settings = normalized
                 self.settings['custom_templates'] = templates
                 self._saved_custom_pixels_snapshot = copy.deepcopy(self.settings.get('custom_pixels', []))
+                self._saved_settings_snapshot = self._persistable_settings_snapshot()
             return True
         except Exception:
             logging.exception("Failed to load settings")
@@ -212,11 +215,14 @@ class SettingsManager:
                 else:
                     settings_data.pop('custom_pixels', None)
                 settings_data['version'] = self.CURRENT_VERSION
+                saved_snapshot = copy.deepcopy(settings_data)
             with open(self.settings_file, 'w', encoding='utf-8') as f:
                 json.dump(settings_data, f, indent=2, ensure_ascii=False)
             if include_custom_pixels:
                 with self.lock:
                     self._saved_custom_pixels_snapshot = copy.deepcopy(self.settings.get('custom_pixels', []))
+            with self.lock:
+                self._saved_settings_snapshot = saved_snapshot
             return True
         except Exception:
             logging.exception("Failed to save settings")
@@ -231,6 +237,7 @@ class SettingsManager:
                 self.settings.update(normalized)
                 if 'custom_pixels' in normalized:
                     self._saved_custom_pixels_snapshot = copy.deepcopy(normalized['custom_pixels'])
+                self._saved_settings_snapshot = self._persistable_settings_snapshot()
             return True
         except Exception:
             logging.exception("Failed to load settings from file: %s", filepath)
@@ -248,6 +255,10 @@ class SettingsManager:
     def has_unsaved_custom_pixels(self) -> bool:
         with self.lock:
             return self.settings.get('custom_pixels', []) != self._saved_custom_pixels_snapshot
+
+    def has_unsaved_settings(self) -> bool:
+        with self.lock:
+            return self._persistable_settings_snapshot() != self._saved_settings_snapshot
 
     def get(self, key: str, default: Any = None) -> Any:
         with self.lock:
@@ -268,6 +279,17 @@ class SettingsManager:
     def _profile_path(self, filename: str) -> str:
         os.makedirs(self.profiles_dir, exist_ok=True)
         return os.path.join(self.profiles_dir, filename)
+
+    def _persistable_settings_snapshot(self) -> Dict[str, Any]:
+        snapshot = {
+            k: copy.deepcopy(v)
+            for k, v in self.settings.items()
+            if k != 'custom_templates'
+        }
+        if not snapshot.get('custom_pixels'):
+            snapshot.pop('custom_pixels', None)
+        snapshot['version'] = self.CURRENT_VERSION
+        return snapshot
 
     def _normalize_settings(self, data: Any, *, partial: bool, source: str) -> Dict[str, Any]:
         if not isinstance(data, dict):

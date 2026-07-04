@@ -272,9 +272,9 @@ ApplicationWindow {
         x: Math.round((app.width - width) / 2)
         y: Math.round((app.height - height) / 2)
         title: "Выход из CrossHud"
-        message: "Пиксельный прицел изменен. Сохранить его перед выходом?"
-        acceptText: "Сохранить прицел"
-        neutralText: "Не сохранять"
+        message: "Есть несохраненные настройки. Сохранить их перед выходом?"
+        acceptText: "Сохранить"
+        neutralText: "Выйти без сохранения"
         rejectText: "Отмена"
         onAccepted: bridge.confirmExit(true, true)
         onNeutral: bridge.confirmExit(true, false)
