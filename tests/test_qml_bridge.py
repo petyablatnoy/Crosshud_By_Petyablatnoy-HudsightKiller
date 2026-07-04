@@ -7,7 +7,7 @@ from unittest import mock
 
 from PySide6.QtCore import QCoreApplication
 
-from qml_ui import UiBridge
+from qml_ui import UiBridge, UpdateChecker
 from settings_manager import SettingsManager
 
 
@@ -132,6 +132,11 @@ class UiBridgeTests(unittest.TestCase):
         self.assertEqual(settings.get("screen_height"), 1440)
         self.assertEqual(overlay.refresh_count, 1)
         self.assertTrue(bridge.dirty)
+
+    def test_update_checker_version_comparison(self):
+        self.assertFalse(UpdateChecker.is_newer("Crosshud_By_Petyablatnoy_SetupV.3.1", "4"))
+        self.assertFalse(UpdateChecker.is_newer("v4.0.0", "4"))
+        self.assertTrue(UpdateChecker.is_newer("v4.1.0", "4"))
 
 
 if __name__ == "__main__":

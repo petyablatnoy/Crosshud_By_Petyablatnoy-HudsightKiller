@@ -12,6 +12,13 @@ Item {
     property var resolutionLabels: ["HD 1280x720", "Full HD 1920x1080", "QHD 2560x1440", "4K 3840x2160", "Свой размер"]
     property var resolutionValues: [[1280, 720], [1920, 1080], [2560, 1440], [3840, 2160], [0, 0]]
 
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.visible && Window.window && Window.window.visible && Window.window.visibility !== Window.Minimized
+        onTriggered: bridge.refreshLogs()
+    }
+
     function setting(key) {
         bridge.revision
         return bridge.getSetting(key)
