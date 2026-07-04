@@ -27,9 +27,10 @@ class CrossHudApp:
         self.overlay = OverlayManager(self.settings, self.signaler.toggle_trigger.emit)
         self.window = QmlWindowController(self.settings, self.overlay, self.main_icon)
         self.window.notify_update.connect(self.show_notification)
-        self.window.exit_confirmed.connect(self._finish_exit)
+        self.window.exit_confirmed.connect(self._schedule_exit)
         self.single_instance = None
         self.tray = None
+        self.exiting = False
         self.res = ResolutionDetector.get_resolution()
         self.settings.set_resolution(*self.res)
         ResolutionDetector.monitor_resolution_changes(self.on_res_change)
@@ -103,9 +104,17 @@ class CrossHudApp:
         self.overlay.request_recreation()
 
     def exit_app(self):
+        if self.exiting:
+            return
         if self.window.bridge.dirty:
             self.show_main_window()
         self.window.request_exit()
+
+    def _schedule_exit(self):
+        if self.exiting:
+            return
+        self.exiting = True
+        QTimer.singleShot(0, self._finish_exit)
 
     def _finish_exit(self):
         try:
