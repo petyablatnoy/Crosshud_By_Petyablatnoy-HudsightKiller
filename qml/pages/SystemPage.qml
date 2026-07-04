@@ -118,7 +118,7 @@ Item {
                     Label { text: "Автозапуск"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("autostart")
-                        onUserToggled: bridge.setAutostart(checked)
+                        onUserToggled: function(checked) { bridge.setAutostart(checked) }
                     }
                 }
 
@@ -127,7 +127,7 @@ Item {
                     Label { text: "Скрытый запуск"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("start_minimized")
-                        onUserToggled: bridge.setSetting("start_minimized", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("start_minimized", checked) }
                     }
                 }
 
@@ -136,7 +136,7 @@ Item {
                     Label { text: "Проверять обновления"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("check_updates")
-                        onUserToggled: bridge.setSetting("check_updates", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("check_updates", checked) }
                     }
                 }
 

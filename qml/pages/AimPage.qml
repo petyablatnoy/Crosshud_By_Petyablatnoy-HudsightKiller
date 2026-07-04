@@ -37,7 +37,7 @@ Item {
                     Label { text: "Включить прицел"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("enabled")
-                        onUserToggled: bridge.setSetting("enabled", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("enabled", checked) }
                     }
                 }
 
@@ -71,7 +71,7 @@ Item {
                     Label { text: "Центральная точка"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("center_dot")
-                        onUserToggled: bridge.setSetting("center_dot", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("center_dot", checked) }
                     }
                 }
 
@@ -95,7 +95,7 @@ Item {
                     Label { text: "Обводка"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("outline_enabled")
-                        onUserToggled: bridge.setSetting("outline_enabled", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("outline_enabled", checked) }
                     }
                 }
 
@@ -124,7 +124,7 @@ Item {
                     Label { text: "Радужный режим"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("rainbow_mode")
-                        onUserToggled: bridge.setSetting("rainbow_mode", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("rainbow_mode", checked) }
                     }
                 }
 
@@ -133,7 +133,7 @@ Item {
                     Label { text: "Динамический цвет"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("dynamic_color")
-                        onUserToggled: bridge.setSetting("dynamic_color", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("dynamic_color", checked) }
                     }
                 }
             }

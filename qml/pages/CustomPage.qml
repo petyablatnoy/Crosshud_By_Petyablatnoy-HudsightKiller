@@ -153,13 +153,13 @@ Item {
     }
 
     Shortcut {
-        sequence: StandardKey.Undo
+        sequences: StandardKey.Undo
         enabled: root.visible
         onActivated: root.undo()
     }
 
     Shortcut {
-        sequence: StandardKey.Redo
+        sequences: StandardKey.Redo
         enabled: root.visible
         onActivated: root.redo()
     }
@@ -197,7 +197,7 @@ Item {
                     Label { text: "Пиксельный прицел"; color: "#F2F3F5"; Layout.fillWidth: true }
                     Toggle {
                         checked: !!root.setting("pixel_perfect")
-                        onUserToggled: bridge.setSetting("pixel_perfect", checked)
+                        onUserToggled: function(checked) { bridge.setSetting("pixel_perfect", checked) }
                     }
                 }
 
