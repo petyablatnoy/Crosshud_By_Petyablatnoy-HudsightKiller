@@ -9,10 +9,17 @@ Item {
     property int gridSize: 101
     property int center: 50
     property int zoom: 6
+    readonly property int minZoom: 6
+    readonly property int maxZoom: 12
     property string brushColor: "#00FF00"
     property var pixels: []
     property var templates: []
     property int selectedTemplate: -1
+    property var undoStack: []
+    property var redoStack: []
+    property int undoDepth: 0
+    property int redoDepth: 0
+    property string editSnapshot: ""
 
     function loadPixels() {
         try { pixels = JSON.parse(bridge.customPixelsJson) } catch (e) { pixels = [] }
@@ -29,6 +36,82 @@ Item {
     function commitPixels() {
         bridge.setCustomPixelsJson(JSON.stringify(pixels))
         canvas.requestPaint()
+    }
+
+    function syncHistoryDepths() {
+        undoDepth = undoStack.length
+        redoDepth = redoStack.length
+    }
+
+    function pushUndoSnapshot(snapshot) {
+        if (!snapshot || snapshot === JSON.stringify(pixels))
+            return
+        undoStack.push(snapshot)
+        if (undoStack.length > 80)
+            undoStack.shift()
+        redoStack = []
+        syncHistoryDepths()
+    }
+
+    function beginEdit() {
+        editSnapshot = JSON.stringify(pixels)
+    }
+
+    function finishEdit() {
+        pushUndoSnapshot(editSnapshot)
+        editSnapshot = ""
+    }
+
+    function restorePixels(snapshot) {
+        try {
+            pixels = JSON.parse(snapshot)
+        } catch (e) {
+            pixels = []
+        }
+        commitPixels()
+    }
+
+    function undo() {
+        if (undoStack.length === 0)
+            return
+        var current = JSON.stringify(pixels)
+        var previous = undoStack.pop()
+        redoStack.push(current)
+        restorePixels(previous)
+        syncHistoryDepths()
+    }
+
+    function redo() {
+        if (redoStack.length === 0)
+            return
+        var current = JSON.stringify(pixels)
+        var next = redoStack.pop()
+        undoStack.push(current)
+        restorePixels(next)
+        syncHistoryDepths()
+    }
+
+    function loadTemplate(index) {
+        var snapshot = JSON.stringify(pixels)
+        bridge.loadTemplate(index)
+        pushUndoSnapshot(snapshot)
+    }
+
+    function setZoom(value) {
+        var nextZoom = Math.max(minZoom, Math.min(maxZoom, value))
+        if (zoom === nextZoom)
+            return
+        zoom = nextZoom
+        Qt.callLater(centerOnCrosshair)
+    }
+
+    function centerOnCrosshair() {
+        if (!editorFlick || editorFlick.width <= 0 || editorFlick.height <= 0)
+            return
+        var crosshairCenterX = canvas.x + (center + 0.5) * zoom
+        var crosshairCenterY = canvas.y + (center + 0.5) * zoom
+        editorFlick.contentX = editorFlick.clampX(crosshairCenterX - editorFlick.width / 2)
+        editorFlick.contentY = editorFlick.clampY(crosshairCenterY - editorFlick.height / 2)
     }
 
     function setting(key) {
@@ -67,6 +150,24 @@ Item {
         target: bridge
         function onRevisionChanged() { root.loadPixels() }
         function onTemplatesChanged() { root.loadTemplates() }
+    }
+
+    Shortcut {
+        sequence: StandardKey.Undo
+        enabled: root.visible
+        onActivated: root.undo()
+    }
+
+    Shortcut {
+        sequence: StandardKey.Redo
+        enabled: root.visible
+        onActivated: root.redo()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Shift+Z"
+        enabled: root.visible
+        onActivated: root.redo()
     }
 
     ColorPickerDialog {
@@ -120,9 +221,11 @@ Item {
                             brushColorDialog.openWith(root.brushColor)
                         }
                     }
-                    ActionButton { text: "-"; compact: true; onClicked: root.zoom = Math.max(3, root.zoom - 1); }
+                    ActionButton { text: "↶"; compact: true; enabled: root.undoDepth > 0; onClicked: root.undo() }
+                    ActionButton { text: "↷"; compact: true; enabled: root.redoDepth > 0; onClicked: root.redo() }
+                    ActionButton { text: "-"; compact: true; onClicked: root.setZoom(root.zoom - 1); }
                     Label { text: root.zoom + "x"; color: "#DBDEE1" }
-                    ActionButton { text: "+"; compact: true; onClicked: root.zoom = Math.min(9, root.zoom + 1); }
+                    ActionButton { text: "+"; compact: true; onClicked: root.setZoom(root.zoom + 1); }
                 }
 
                 Flickable {
@@ -130,10 +233,13 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    contentWidth: canvas.width
-                    contentHeight: canvas.height
+                    contentWidth: Math.max(width, canvas.width)
+                    contentHeight: Math.max(height, canvas.height)
                     boundsBehavior: Flickable.StopAtBounds
                     property bool smoothWheel: false
+                    Component.onCompleted: Qt.callLater(root.centerOnCrosshair)
+                    onWidthChanged: Qt.callLater(root.centerOnCrosshair)
+                    onHeightChanged: Qt.callLater(root.centerOnCrosshair)
 
                     function clampX(value) {
                         return Math.max(0, Math.min(contentWidth - width, value))
@@ -164,6 +270,10 @@ Item {
                         id: canvas
                         width: root.gridSize * root.zoom
                         height: root.gridSize * root.zoom
+                        x: Math.round(Math.max(0, (editorFlick.width - width) / 2))
+                        y: Math.round(Math.max(0, (editorFlick.height - height) / 2))
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
 
                         onPaint: {
                             var ctx = getContext("2d")
@@ -205,15 +315,18 @@ Item {
                             }
 
                             onPressed: function(mouse) {
+                                root.beginEdit()
                                 apply(mouse)
                             }
                             onPositionChanged: function(mouse) {
                                 if (pressed)
                                     apply(mouse)
                             }
+                            onReleased: root.finishEdit()
+                            onCanceled: root.finishEdit()
                             onWheel: function(wheel) {
                                 if (wheel.modifiers & Qt.ControlModifier) {
-                                    root.zoom = Math.max(3, Math.min(9, root.zoom + (wheel.angleDelta.y > 0 ? 1 : -1)))
+                                    root.setZoom(root.zoom + (wheel.angleDelta.y > 0 ? 1 : -1))
                                     wheel.accepted = true
                                     canvas.requestPaint()
                                     return
@@ -284,7 +397,7 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    ActionButton { text: "Загрузить"; Layout.fillWidth: true; onClicked: bridge.loadTemplate(templateBox.currentIndex) }
+                    ActionButton { text: "Загрузить"; Layout.fillWidth: true; onClicked: root.loadTemplate(templateBox.currentIndex) }
                     ActionButton { text: "Сохранить"; Layout.fillWidth: true; highlighted: true; onClicked: bridge.saveTemplate(templateName.text) }
                 }
 
