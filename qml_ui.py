@@ -176,6 +176,7 @@ class UiBridge(QObject):
     @Slot(bool, result=bool)
     def saveSettings(self, include_custom_pixels=False):
         if self.settings.save_settings(include_custom_pixels=include_custom_pixels):
+            logging.info("Settings saved; include_custom_pixels=%s", include_custom_pixels)
             self.update_dirty_state()
             self.bump_revision()
             self.show_toast("Настройки сохранены", "success")
@@ -193,6 +194,7 @@ class UiBridge(QObject):
         self.bump_revision()
         self.settings.load_templates_from_disk()
         self.templatesChanged.emit()
+        logging.info("Unsaved settings reset from disk")
         self.show_toast("Настройки сброшены", "success")
         return True
 
@@ -203,6 +205,7 @@ class UiBridge(QObject):
     @Slot()
     def requestExit(self):
         if self.settings.has_unsaved_settings():
+            logging.info("Exit requires confirmation: unsaved settings")
             self.exitSavePrompt.emit()
             return
         self.exitConfirmed.emit()
@@ -214,6 +217,7 @@ class UiBridge(QObject):
         if include_custom_pixels and not self.settings.save_settings(include_custom_pixels=True):
             self.show_toast("Не удалось сохранить настройки", "error")
             return
+        logging.info("Exit confirmed; saved_before_exit=%s", include_custom_pixels)
         self._dirty = False
         self.dirtyChanged.emit()
         self.exitConfirmed.emit()

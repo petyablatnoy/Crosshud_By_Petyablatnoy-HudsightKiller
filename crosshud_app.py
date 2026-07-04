@@ -34,6 +34,7 @@ class CrossHudApp:
         self.res = ResolutionDetector.get_resolution()
         self.settings.set_resolution(*self.res)
         ResolutionDetector.monitor_resolution_changes(self.on_res_change)
+        logging.info("Application initialized; detected_resolution=%sx%s", self.res[0], self.res[1])
         
     def get_best_icon(self):
         icon_path = "icon.ico"
@@ -64,6 +65,7 @@ class CrossHudApp:
         self.tray.activated.connect(self.on_tray_click)
         self.tray.messageClicked.connect(self.on_notification_click)
         self.tray.show()
+        logging.info("System tray initialized")
 
     def on_notification_click(self):
         self.show_main_window()
@@ -102,6 +104,7 @@ class CrossHudApp:
     def on_res_change(self, o, n):
         self.settings.set_resolution(*n)
         self.overlay.request_recreation()
+        logging.info("Resolution changed: %sx%s -> %sx%s", o[0], o[1], n[0], n[1])
 
     def exit_app(self):
         if self.exiting:
@@ -114,6 +117,7 @@ class CrossHudApp:
         if self.exiting:
             return
         self.exiting = True
+        logging.info("Exit requested")
         QTimer.singleShot(0, self._finish_exit)
 
     def _finish_exit(self):
@@ -122,6 +126,7 @@ class CrossHudApp:
             self.overlay.cleanup()
         except Exception:
             logging.exception("Error while exiting CrossHud")
+        logging.info("Application stopped")
         self.app.quit()
 
     def run(self, start_minimized=False):
@@ -130,6 +135,9 @@ class CrossHudApp:
             if not start_minimized:
                 self.window.show()
                 self.window.raise_()
+                logging.info("Main window shown")
+            else:
+                logging.info("Started minimized")
             QTimer.singleShot(500, lambda: self.overlay.show() if self.settings.get('enabled', True) else None)
         QTimer.singleShot(200, startup_logic)
         sys.exit(self.app.exec())

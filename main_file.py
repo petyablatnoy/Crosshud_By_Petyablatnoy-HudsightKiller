@@ -154,7 +154,14 @@ def main():
             return
 
         setup_logging(args.debug)
-        
+        logging.info(
+            "%s %s starting; debug=%s; frozen=%s",
+            APP_NAME,
+            APP_VERSION,
+            args.debug,
+            getattr(sys, "frozen", False),
+        )
+
         app = CrossHudApp()
         single_instance = SingleInstanceManager(app.app)
         if single_instance.start(app.show_main_window):
@@ -166,6 +173,12 @@ def main():
         if args.enable: app.settings.set('enabled', True)
         
         start_minimized = args.minimize or app.settings.get('start_minimized', False)
+        logging.info(
+            "Startup mode: minimized=%s, overlay_enabled=%s, settings=%s",
+            start_minimized,
+            app.settings.get('enabled', True),
+            app.settings.settings_file,
+        )
         app.run(start_minimized)
         
     except Exception:
