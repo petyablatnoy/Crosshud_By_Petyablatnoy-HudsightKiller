@@ -16,14 +16,16 @@ ApplicationWindow {
     title: "CrossHud"
 
     property int currentPage: 0
-    property var uiBridge: bridge
+    property var uiBridge: null
     property bool powerMenuOpen: false
 
+    Component.onCompleted: uiBridge = bridge
+
     function saveClicked() {
-        if (bridge.hasUnsavedCustomPixels())
+        if (uiBridge.hasUnsavedCustomPixels())
             savePixelsDialog.open()
         else
-            bridge.saveSettings(false)
+            uiBridge.saveSettings(false)
     }
 
     onClosing: function(close) {
@@ -32,7 +34,7 @@ ApplicationWindow {
     }
 
     Connections {
-        target: bridge
+        target: app.uiBridge
         function onToastRequested(text, kind) { toastLayer.show(text, kind) }
         function onExitSavePrompt() { exitSaveDialog.open() }
     }
@@ -41,7 +43,7 @@ ApplicationWindow {
         interval: 450
         running: true
         repeat: false
-        onTriggered: bridge.showStartupWarnings()
+        onTriggered: app.uiBridge.showStartupWarnings()
     }
 
     Rectangle {
@@ -102,7 +104,7 @@ ApplicationWindow {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: bridge.openProjectPage()
+                                onClicked: app.uiBridge.openProjectPage()
                             }
                         }
                     }
@@ -135,7 +137,7 @@ ApplicationWindow {
                     powerMenuOpen: app.powerMenuOpen
                     onPageSelected: function(page) { app.currentPage = page }
                     onSaveRequested: app.saveClicked()
-                    onResetRequested: bridge.resetSettings()
+                    onResetRequested: app.uiBridge.resetSettings()
                     onPowerRequested: app.powerMenuOpen = !app.powerMenuOpen
                 }
 
@@ -247,7 +249,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     onClicked: {
                         app.powerMenuOpen = false
-                        bridge.requestExit()
+                        app.uiBridge.requestExit()
                     }
                 }
             }
@@ -263,8 +265,8 @@ ApplicationWindow {
         acceptText: "Сохранить прицел"
         neutralText: "Не сохранять"
         rejectText: "Отмена"
-        onAccepted: bridge.saveSettings(true)
-        onNeutral: bridge.saveSettings(false)
+        onAccepted: app.uiBridge.saveSettings(true)
+        onNeutral: app.uiBridge.saveSettings(false)
     }
 
     ConfirmDialog {
@@ -276,8 +278,8 @@ ApplicationWindow {
         acceptText: "Сохранить"
         neutralText: "Выйти без сохранения"
         rejectText: "Отмена"
-        onAccepted: bridge.confirmExit(true, true)
-        onNeutral: bridge.confirmExit(true, false)
-        onRejected: bridge.confirmExit(false, false)
+        onAccepted: app.uiBridge.confirmExit(true, true)
+        onNeutral: app.uiBridge.confirmExit(true, false)
+        onRejected: app.uiBridge.confirmExit(false, false)
     }
 }
