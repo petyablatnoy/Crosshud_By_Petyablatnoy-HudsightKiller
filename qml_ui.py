@@ -12,6 +12,7 @@ from PySide6.QtGui import QDesktopServices, QGuiApplication, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
 from app_metadata import APP_NAME, APP_VERSION, PROJECT_URL as PROJECT_PAGE_URL, UPDATE_API_URL, UPDATE_RELEASES_PATH
+from diagnostics import DiagnosticService
 from hotkeys import HOTKEY_NAMES
 
 
@@ -160,6 +161,12 @@ class UiBridge(QObject):
         self._update_thread = None
         self._update_installer_thread = None
         self._update_check_started = False
+        self.diagnostics = DiagnosticService(
+            self.settings.app_data_dir,
+            self.settings.settings_file,
+            self.log_file_path(),
+            self.settings,
+        )
         self.update_dirty_state()
         self.refresh_logs()
 
@@ -186,6 +193,14 @@ class UiBridge(QObject):
     @Property(str, constant=True)
     def logsPath(self):
         return self.log_file_path()
+
+    @Property(str, notify=revisionChanged)
+    def diagnosticsJson(self):
+        return self.diagnostics.rows_json()
+
+    @Property(str, constant=True)
+    def clientId(self):
+        return self.diagnostics.client_id()
 
     @Property(str, notify=updateUrlChanged)
     def updateUrl(self):
@@ -406,6 +421,20 @@ class UiBridge(QObject):
     @Slot()
     def openLogsFolder(self):
         QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(self.log_file_path())))
+
+    @Slot()
+    def copyClientId(self):
+        clipboard = QGuiApplication.clipboard()
+        if clipboard:
+            clipboard.setText(self.diagnostics.client_id())
+            self.show_toast("UID скопирован", "success")
+
+    @Slot()
+    def copyDiagnostics(self):
+        clipboard = QGuiApplication.clipboard()
+        if clipboard:
+            clipboard.setText(self.diagnostics.report_text())
+            self.show_toast("Сведения скопированы", "success")
 
     @Slot()
     def showStartupWarnings(self):

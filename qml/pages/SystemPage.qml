@@ -34,6 +34,15 @@ Item {
         return root.resolutionValues.length - 1
     }
 
+    function diagnosticsRows() {
+        bridge.revision
+        try {
+            return JSON.parse(bridge.diagnosticsJson)
+        } catch (e) {
+            return []
+        }
+    }
+
     Component.onCompleted: {
         try {
             hotkeys = JSON.parse(bridge.hotkeysJson)
@@ -182,6 +191,52 @@ Item {
                     text: bridge.logsText
                     Layout.fillWidth: true
                     Layout.preferredHeight: 260
+                }
+            }
+
+            SectionPanel {
+                title: "СВЕДЕНИЯ"
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label {
+                        text: "Данные для обращения в поддержку"
+                        color: "#F2F3F5"
+                        Layout.fillWidth: true
+                    }
+                    ActionButton {
+                        text: "UID"
+                        onClicked: bridge.copyClientId()
+                    }
+                    ActionButton {
+                        text: "Скопировать"
+                        highlighted: true
+                        onClicked: bridge.copyDiagnostics()
+                    }
+                }
+
+                Repeater {
+                    model: root.diagnosticsRows()
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        Label {
+                            text: modelData.label
+                            color: "#B5BAC1"
+                            Layout.preferredWidth: 96
+                            font.pixelSize: 12
+                        }
+
+                        Label {
+                            text: modelData.value
+                            color: "#F2F3F5"
+                            Layout.fillWidth: true
+                            font.pixelSize: 12
+                            elide: Text.ElideMiddle
+                        }
+                    }
                 }
             }
         }
