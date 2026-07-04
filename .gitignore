@@ -6,10 +6,19 @@ __pycache__/
 .venv-build/
 venv/
 env/
+.env
+.env.*
+
+.idea/
+.vscode/
 
 build/
 dist/
+release/
+releases/
+artifacts/
 *.spec
+*.manifest
 
 .pytest_cache/
 .mypy_cache/
@@ -19,6 +28,7 @@ htmlcov/
 
 *.log
 logs/
+support_reports/
 app.lock
 
 .DS_Store
@@ -27,5 +37,24 @@ Thumbs.db
 *.tmp
 *.bak
 *.old
+*.swp
+*.swo
 
 3.1/
+settings.json
+crosshair_settings.json
+*_profile.json
+profiles/
+
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.exe
+*.msi
+
+*.cer
+*.crt
+*.pfx
+*.p12
