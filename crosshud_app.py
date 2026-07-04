@@ -109,6 +109,7 @@ class CrossHudApp:
 
     def _finish_exit(self):
         try:
+            self.window.shutdown()
             self.overlay.cleanup()
         except Exception:
             logging.exception("Error while exiting CrossHud")

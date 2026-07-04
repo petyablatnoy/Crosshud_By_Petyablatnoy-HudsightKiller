@@ -6,7 +6,7 @@ import urllib.request
 import winreg
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QObject, Property, QThread, QUrl, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, Property, QThread, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -438,3 +438,19 @@ class QmlWindowController(QObject):
 
     def show_warning(self, text):
         self.bridge.show_toast(text, "warning")
+
+    def shutdown(self):
+        if self.root is not None:
+            self.root.hide()
+            self.root.deleteLater()
+            self.root = None
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+        if self.engine is not None:
+            self.engine.deleteLater()
+            self.engine = None
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+        app = QCoreApplication.instance()
+        if app:
+            app.processEvents()
