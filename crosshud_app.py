@@ -2,6 +2,7 @@ import sys
 import os
 import logging
 import atexit
+import subprocess
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap, QFont
 from PySide6.QtCore import Signal, QObject, Qt, QTimer
@@ -28,9 +29,9 @@ class CrossHudApp:
         self.window = QmlWindowController(self.settings, self.overlay, self.main_icon)
         self.window.notify_update.connect(self.show_notification)
         self.window.exit_confirmed.connect(self._schedule_exit)
+        self.window.run_update_installer.connect(self._run_update_installer)
         self.single_instance = None
         self.tray = None
-        self.notification_url = ""
         self.exiting = False
         self.res = ResolutionDetector.get_resolution()
         self.settings.set_resolution(*self.res)
@@ -69,18 +70,13 @@ class CrossHudApp:
         logging.info("System tray initialized")
 
     def on_notification_click(self):
-        if self.notification_url:
-            self.window.bridge.openUpdate()
-        else:
-            self.show_main_window()
+        self.show_main_window()
 
     def on_tray_click(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.toggle_window()
 
     def show_notification(self, title, msg, url=None):
-        if url:
-            self.notification_url = url
         if self.tray and self.tray.isVisible():
             self.tray.showMessage(title, msg, QSystemTrayIcon.Information, 7000)
 
@@ -124,6 +120,20 @@ class CrossHudApp:
         self.exiting = True
         logging.info("Exit requested")
         QTimer.singleShot(0, self._finish_exit)
+
+    def _run_update_installer(self, script_path):
+        shell = "powershell.exe"
+        try:
+            subprocess.Popen(
+                [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path],
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            logging.info("Update installer helper started: %s", script_path)
+        except Exception:
+            logging.exception("Failed to start update installer helper")
+            self.window.show_warning("Не удалось запустить установщик обновления")
+            return
+        self._schedule_exit()
 
     def _finish_exit(self):
         try:

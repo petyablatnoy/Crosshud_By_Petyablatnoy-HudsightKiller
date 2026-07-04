@@ -142,6 +142,16 @@ class UiBridgeTests(unittest.TestCase):
         self.assertEqual(UpdateChecker.display_version("Crosshud_By_Petyablatnoy_SetupV.3.1"), "3.1")
         self.assertEqual(UpdateChecker.display_version("v4.0.0"), "4")
 
+    def test_update_checker_selects_setup_asset(self):
+        release = {
+            "assets": [
+                {"name": "sourcecode.zip", "browser_download_url": "https://example.invalid/source.zip"},
+                {"name": "CrossHud_By_PetyaBlatnoy_Setup.exe", "browser_download_url": "https://example.invalid/setup.exe"},
+            ]
+        }
+
+        self.assertEqual(UpdateChecker.installer_url(release), "https://example.invalid/setup.exe")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import urllib.request
 import winreg
 from urllib.parse import urlparse
@@ -10,12 +11,12 @@ from PySide6.QtCore import QCoreApplication, QEvent, QObject, Property, QThread,
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
-from app_metadata import APP_VERSION, PROJECT_URL as PROJECT_PAGE_URL, UPDATE_API_URL, UPDATE_RELEASES_PATH
+from app_metadata import APP_NAME, APP_VERSION, PROJECT_URL as PROJECT_PAGE_URL, UPDATE_API_URL, UPDATE_RELEASES_PATH
 from hotkeys import HOTKEY_NAMES
 
 
 class UpdateChecker(QThread):
-    update_available = Signal(str, str)
+    update_available = Signal(str, str, str)
 
     def run(self):
         try:
@@ -23,9 +24,22 @@ class UpdateChecker(QThread):
                 data = json.loads(response.read().decode())
             latest_tag = data.get("tag_name", "")
             if self.is_newer(latest_tag, APP_VERSION):
-                self.update_available.emit(data.get("html_url", ""), self.display_version(latest_tag))
+                self.update_available.emit(
+                    data.get("html_url", ""),
+                    self.display_version(latest_tag),
+                    self.installer_url(data),
+                )
         except Exception:
             logging.debug("Update check failed", exc_info=True)
+
+    @staticmethod
+    def installer_url(release_data):
+        for asset in release_data.get("assets", []):
+            name = asset.get("name", "").lower()
+            url = asset.get("browser_download_url", "")
+            if name.endswith(".exe") and "setup" in name and url:
+                return url
+        return ""
 
     @staticmethod
     def parse_version(v_str):
@@ -55,6 +69,64 @@ class UpdateChecker(QThread):
             return False
 
 
+class UpdateInstaller(QThread):
+    progress_changed = Signal(int, str)
+    install_ready = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, download_url, parent=None):
+        super().__init__(parent)
+        self.download_url = download_url
+
+    def run(self):
+        try:
+            work_dir = tempfile.mkdtemp(prefix="crosshud-update-")
+            setup_path = os.path.join(work_dir, os.path.basename(urlparse(self.download_url).path) or "CrossHud_Setup.exe")
+            self._download(setup_path)
+            script_path = self._write_installer_script(work_dir, setup_path)
+            self.progress_changed.emit(100, "Запуск установщика")
+            self.install_ready.emit(script_path)
+        except Exception:
+            logging.exception("Update install preparation failed")
+            self.failed.emit("Не удалось подготовить обновление")
+
+    def _download(self, setup_path):
+        request = urllib.request.Request(self.download_url, headers={"User-Agent": APP_NAME})
+        with urllib.request.urlopen(request, timeout=30) as response, open(setup_path, "wb") as output:
+            total = int(response.headers.get("Content-Length") or 0)
+            downloaded = 0
+            while True:
+                chunk = response.read(1024 * 256)
+                if not chunk:
+                    break
+                output.write(chunk)
+                downloaded += len(chunk)
+                if total > 0:
+                    progress = max(1, min(99, int(downloaded * 100 / total)))
+                    self.progress_changed.emit(progress, f"Скачивание {progress}%")
+        if os.path.getsize(setup_path) <= 0:
+            raise RuntimeError("Downloaded installer is empty")
+
+    def _write_installer_script(self, work_dir, setup_path):
+        install_dir = os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), APP_NAME)
+        installed_exe = sys.executable if getattr(sys, "frozen", False) else os.path.join(install_dir, f"{APP_NAME}.exe")
+        script_path = os.path.join(work_dir, "install-crosshud-update.ps1")
+        script = f"""$ErrorActionPreference = 'Stop'
+$setup = {setup_path!r}
+$app = {installed_exe!r}
+Start-Sleep -Seconds 1
+Start-Process -FilePath $setup -ArgumentList '/S' -Verb RunAs -Wait
+if (Test-Path $app) {{
+    Start-Process -FilePath $app
+}}
+Remove-Item -LiteralPath $setup -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
+"""
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(script)
+        return script_path
+
+
 class UiBridge(QObject):
     UPDATE_REPO_PATH = UPDATE_RELEASES_PATH
     PROJECT_URL = PROJECT_PAGE_URL
@@ -64,10 +136,12 @@ class UiBridge(QObject):
     templatesChanged = Signal()
     logsChanged = Signal()
     updateUrlChanged = Signal()
+    updateInstallChanged = Signal()
     toastRequested = Signal(str, str)
     exitSavePrompt = Signal()
     exitConfirmed = Signal()
     notifyUpdate = Signal(str, str, str)
+    runUpdateInstaller = Signal(str)
 
     def __init__(self, settings_manager, overlay_manager, app_icon=None, parent=None):
         super().__init__(parent)
@@ -78,8 +152,13 @@ class UiBridge(QObject):
         self._dirty = False
         self._update_url = ""
         self._update_version = ""
+        self._update_download_url = ""
+        self._update_progress = 0
+        self._update_status = ""
+        self._update_installing = False
         self._logs_text = ""
         self._update_thread = None
+        self._update_installer_thread = None
         self._update_check_started = False
         self.update_dirty_state()
         self.refresh_logs()
@@ -115,6 +194,18 @@ class UiBridge(QObject):
     @Property(str, notify=updateUrlChanged)
     def updateVersion(self):
         return self._update_version
+
+    @Property(int, notify=updateInstallChanged)
+    def updateProgress(self):
+        return self._update_progress
+
+    @Property(str, notify=updateInstallChanged)
+    def updateStatus(self):
+        return self._update_status
+
+    @Property(bool, notify=updateInstallChanged)
+    def updateInstalling(self):
+        return self._update_installing
 
     @Property(str, constant=True)
     def hotkeysJson(self):
@@ -330,6 +421,27 @@ class UiBridge(QObject):
             self.show_toast("Ссылка обновления отклонена", "warning")
 
     @Slot()
+    def openLatestRelease(self):
+        QDesktopServices.openUrl(QUrl(f"{self.PROJECT_URL}/releases/latest"))
+
+    @Slot()
+    def installUpdate(self):
+        if self._update_installing:
+            return
+        if not self._is_valid_update_url(self._update_download_url):
+            self.show_toast("Установщик обновления недоступен", "warning")
+            return
+        self._update_installing = True
+        self._update_progress = 0
+        self._update_status = "Подготовка загрузки"
+        self.updateInstallChanged.emit()
+        self._update_installer_thread = UpdateInstaller(self._update_download_url, self)
+        self._update_installer_thread.progress_changed.connect(self._on_update_progress)
+        self._update_installer_thread.install_ready.connect(self._on_update_install_ready)
+        self._update_installer_thread.failed.connect(self._on_update_install_failed)
+        self._update_installer_thread.start()
+
+    @Slot()
     def openProjectPage(self):
         QDesktopServices.openUrl(QUrl(self.PROJECT_URL))
 
@@ -359,15 +471,33 @@ class UiBridge(QObject):
         self._update_thread.update_available.connect(self._on_update_available)
         self._update_thread.start()
 
-    def _on_update_available(self, url, version):
-        if not self._is_valid_update_url(url):
-            logging.warning("Ignored unexpected update URL: %s", url)
+    def _on_update_available(self, url, version, download_url):
+        if not self._is_valid_update_url(url) or not self._is_valid_update_url(download_url):
+            logging.warning("Ignored unexpected update URLs: release=%s download=%s", url, download_url)
             return
         self._update_url = url
         self._update_version = version
+        self._update_download_url = download_url
         self.updateUrlChanged.emit()
         logging.info("Update available: version=%s url=%s", version, url)
-        self.notifyUpdate.emit("Доступна новая версия", f"CrossHud {version}. Нажмите, чтобы открыть релиз.", url)
+        self.notifyUpdate.emit("Доступна новая версия", f"CrossHud {version}. Откройте приложение для обновления.", url)
+
+    def _on_update_progress(self, progress, status):
+        self._update_progress = progress
+        self._update_status = status
+        self.updateInstallChanged.emit()
+
+    def _on_update_install_ready(self, script_path):
+        self._update_progress = 100
+        self._update_status = "Запуск установщика"
+        self.updateInstallChanged.emit()
+        self.runUpdateInstaller.emit(script_path)
+
+    def _on_update_install_failed(self, message):
+        self._update_installing = False
+        self._update_status = message
+        self.updateInstallChanged.emit()
+        self.show_toast(message, "error")
 
     def _is_valid_update_url(self, url):
         try:
@@ -406,6 +536,7 @@ class UiBridge(QObject):
 class QmlWindowController(QObject):
     notify_update = Signal(str, str, str)
     exit_confirmed = Signal()
+    run_update_installer = Signal(str)
 
     def __init__(self, settings_manager, overlay_manager, app_icon=None, parent=None):
         super().__init__(parent)
@@ -415,6 +546,7 @@ class QmlWindowController(QObject):
         self.bridge = UiBridge(settings_manager, overlay_manager, app_icon, self)
         self.bridge.notifyUpdate.connect(self.notify_update)
         self.bridge.exitConfirmed.connect(self.exit_confirmed)
+        self.bridge.runUpdateInstaller.connect(self.run_update_installer)
         self.engine = QQmlApplicationEngine(self)
         self.engine.rootContext().setContextProperty("bridge", self.bridge)
         qml_file = os.path.join(self.bridge.qml_dir(), "Main.qml")

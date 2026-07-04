@@ -19,6 +19,7 @@ ApplicationWindow {
     property var uiBridge: null
     property bool powerMenuOpen: false
     property bool updateBannerDismissed: false
+    readonly property bool updateBannerOpen: app.uiBridge && app.uiBridge.updateUrl.length > 0 && !app.updateBannerDismissed
 
     Component.onCompleted: uiBridge = bridge
 
@@ -214,41 +215,87 @@ ApplicationWindow {
         x: 72
         y: 44
         width: parent.width - 96
-        height: 44
+        height: app.uiBridge && app.uiBridge.updateInstalling ? 76 : 48
         z: 18
-        visible: app.uiBridge && app.uiBridge.updateUrl.length > 0 && !app.updateBannerDismissed
+        visible: app.updateBannerOpen || opacity > 0
+        opacity: app.updateBannerOpen ? 1 : 0
         radius: 8
         color: "#232428"
         border.color: "#5865F2"
         border.width: 1
 
-        RowLayout {
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+        ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: 14
-            anchors.rightMargin: 10
-            spacing: 12
+            anchors.margins: 10
+            spacing: 8
 
-            Label {
-                text: {
-                    var version = app.uiBridge ? app.uiBridge.updateVersion : ""
-                    return "Доступна новая версия CrossHud" + (version.length > 0 ? " " + version : "")
-                }
-                color: "#F2F3F5"
-                font.pixelSize: 13
-                font.bold: true
-                elide: Text.ElideRight
+            RowLayout {
                 Layout.fillWidth: true
+                spacing: 10
+
+                Label {
+                    text: {
+                        var version = app.uiBridge ? app.uiBridge.updateVersion : ""
+                        return "Доступна новая версия CrossHud" + (version.length > 0 ? " " + version : "")
+                    }
+                    color: "#F2F3F5"
+                    font.pixelSize: 13
+                    font.bold: true
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+
+                ActionButton {
+                    text: app.uiBridge && app.uiBridge.updateInstalling ? "Обновление" : "Обновить"
+                    highlighted: true
+                    enabled: app.uiBridge && !app.uiBridge.updateInstalling
+                    onClicked: app.uiBridge.installUpdate()
+                }
+
+                ActionButton {
+                    text: "Релиз"
+                    enabled: app.uiBridge && !app.uiBridge.updateInstalling
+                    onClicked: app.uiBridge.openLatestRelease()
+                }
+
+                ActionButton {
+                    text: "Позже"
+                    enabled: app.uiBridge && !app.uiBridge.updateInstalling
+                    onClicked: app.updateBannerDismissed = true
+                }
             }
 
-            ActionButton {
-                text: "Скачать"
-                highlighted: true
-                onClicked: app.uiBridge.openUpdate()
-            }
+            RowLayout {
+                visible: app.uiBridge && app.uiBridge.updateInstalling
+                Layout.fillWidth: true
+                spacing: 12
 
-            ActionButton {
-                text: "Позже"
-                onClicked: app.updateBannerDismissed = true
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 6
+                    radius: 3
+                    color: "#1E1F22"
+
+                    Rectangle {
+                        width: parent.width * ((app.uiBridge ? app.uiBridge.updateProgress : 0) / 100)
+                        height: parent.height
+                        radius: parent.radius
+                        color: "#5865F2"
+
+                        Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                    }
+                }
+
+                Label {
+                    text: app.uiBridge ? app.uiBridge.updateStatus : ""
+                    color: "#B5BAC1"
+                    font.pixelSize: 11
+                    Layout.preferredWidth: 128
+                    elide: Text.ElideRight
+                }
             }
         }
     }
