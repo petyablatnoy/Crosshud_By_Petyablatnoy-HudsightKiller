@@ -31,7 +31,7 @@ class SettingsManagerTests(unittest.TestCase):
             "custom_pixels": [[0, 0, "#00ff00"], [999, 0, "#fff"], ["x", 0, "#00ff00"]]
         })
 
-        self.assertEqual(manager.get("version"), "4.0.3")
+        self.assertEqual(manager.get("version"), "4.0.4")
         self.assertIs(manager.get("enabled"), True)
         self.assertEqual(manager.get("size"), 100.0)
         self.assertEqual(manager.get("color"), "#00FF00")
@@ -50,7 +50,7 @@ class SettingsManagerTests(unittest.TestCase):
         with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
             manager = SettingsManager()
 
-        self.assertEqual(manager.get("version"), "4.0.3")
+        self.assertEqual(manager.get("version"), "4.0.4")
         self.assertEqual(manager.get("hotkey"), "Insert")
         self.assertTrue(manager.consume_warnings())
 

@@ -6,6 +6,7 @@ import subprocess
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap, QFont
 from PySide6.QtCore import Signal, QObject, Qt, QTimer
+from autostart_manager import repair_autostart
 from settings_manager import SettingsManager
 from overlay_manager import OverlayManager
 from qml_ui import QmlWindowController
@@ -22,6 +23,7 @@ class CrossHudApp:
         self.main_icon = self.get_best_icon()
         self.app.setWindowIcon(self.main_icon)
         self.settings = SettingsManager()
+        self._repair_autostart()
         self.res_detector_active = True
         self.signaler = Signaler()
         self.signaler.toggle_trigger.connect(self.toggle_crosshair_logic)
@@ -37,6 +39,15 @@ class CrossHudApp:
         self.settings.set_resolution(*self.res)
         ResolutionDetector.monitor_resolution_changes(self.on_res_change)
         logging.info("Application initialized; detected_resolution=%sx%s", self.res[0], self.res[1])
+
+    def _repair_autostart(self):
+        if not self.settings.get("autostart", False):
+            return
+        try:
+            repair_autostart()
+            logging.info("Autostart registry entry repaired")
+        except Exception:
+            logging.exception("Failed to repair autostart registry entry")
         
     def get_best_icon(self):
         icon_path = "icon.ico"

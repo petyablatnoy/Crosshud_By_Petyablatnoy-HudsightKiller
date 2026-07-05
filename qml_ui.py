@@ -4,7 +4,6 @@ import os
 import sys
 import tempfile
 import urllib.request
-import winreg
 from urllib.parse import urlparse
 
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, Property, QThread, QUrl, Signal, Slot
@@ -20,6 +19,7 @@ from app_metadata import (
     UPDATE_API_URL,
     UPDATE_RELEASES_PATH,
 )
+from autostart_manager import set_autostart
 from diagnostics import DiagnosticService
 from hotkeys import HOTKEY_NAMES
 
@@ -352,29 +352,8 @@ class UiBridge(QObject):
 
     @Slot(bool)
     def setAutostart(self, state):
-        key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        key = None
         try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
-            if state:
-                if getattr(sys, "frozen", False):
-                    path = f'"{sys.executable}"'
-                else:
-                    path = f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
-                winreg.SetValueEx(key, "CrossHud", 0, winreg.REG_SZ, path)
-                try:
-                    winreg.DeleteValue(key, "CrossHud_PetyaBlatnoy")
-                except FileNotFoundError:
-                    pass
-            else:
-                try:
-                    winreg.DeleteValue(key, "CrossHud")
-                except FileNotFoundError:
-                    pass
-                try:
-                    winreg.DeleteValue(key, "CrossHud_PetyaBlatnoy")
-                except FileNotFoundError:
-                    pass
+            set_autostart(state)
             if not self.settings.set("autostart", state):
                 self.show_toast("Не удалось изменить автозапуск", "error")
                 self.bump_revision()
@@ -386,9 +365,6 @@ class UiBridge(QObject):
             self.settings.set("autostart", not state)
             self.bump_revision()
             self.show_toast("Не удалось изменить автозапуск", "error")
-        finally:
-            if key:
-                winreg.CloseKey(key)
 
     @Slot(int)
     def loadTemplate(self, index):
