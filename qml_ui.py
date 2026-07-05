@@ -26,20 +26,52 @@ from hotkeys import HOTKEY_NAMES
 
 class UpdateChecker(QThread):
     update_available = Signal(str, str, str)
+    INSTALLER_NAME = "CrossHud_Setup.exe"
 
     def run(self):
         try:
-            with urllib.request.urlopen(UPDATE_API_URL, timeout=5) as response:
-                data = json.loads(response.read().decode())
-            latest_tag = data.get("tag_name", "")
-            if self.is_newer(latest_tag, APP_VERSION):
-                self.update_available.emit(
-                    data.get("html_url", ""),
-                    self.display_version(latest_tag),
-                    self.installer_url(data),
-                )
+            data = self.fetch_release_data()
+            self.emit_if_newer(data)
         except Exception:
             logging.debug("Update check failed", exc_info=True)
+
+    def fetch_release_data(self):
+        try:
+            return self.fetch_api_release_data()
+        except Exception:
+            logging.debug("GitHub API update check failed, trying fallback", exc_info=True)
+            return self.fetch_fallback_release_data()
+
+    def fetch_api_release_data(self):
+        request = urllib.request.Request(UPDATE_API_URL, headers={"User-Agent": APP_NAME})
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return json.loads(response.read().decode())
+
+    def fetch_fallback_release_data(self):
+        latest_url = f"{PROJECT_PAGE_URL}/releases/latest"
+        request = urllib.request.Request(latest_url, headers={"User-Agent": APP_NAME})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            release_url = response.geturl() or latest_url
+        latest_tag = self.release_tag_from_url(release_url)
+        return {
+            "tag_name": latest_tag,
+            "html_url": release_url,
+            "assets": [
+                {
+                    "name": self.INSTALLER_NAME,
+                    "browser_download_url": f"{PROJECT_PAGE_URL}/releases/latest/download/{self.INSTALLER_NAME}",
+                }
+            ],
+        }
+
+    def emit_if_newer(self, data):
+        latest_tag = data.get("tag_name", "")
+        if self.is_newer(latest_tag, APP_VERSION):
+            self.update_available.emit(
+                data.get("html_url", ""),
+                self.display_version(latest_tag),
+                self.installer_url(data),
+            )
 
     @staticmethod
     def installer_url(release_data):
@@ -49,6 +81,17 @@ class UpdateChecker(QThread):
             if name.endswith(".exe") and "setup" in name and url:
                 return url
         return ""
+
+    @staticmethod
+    def release_tag_from_url(url):
+        parsed = urlparse(url)
+        parts = [part for part in parsed.path.split("/") if part]
+        if "tag" not in parts:
+            return ""
+        index = parts.index("tag")
+        if index + 1 >= len(parts):
+            return ""
+        return parts[index + 1]
 
     @staticmethod
     def parse_version(v_str):

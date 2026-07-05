@@ -152,6 +152,30 @@ class UiBridgeTests(unittest.TestCase):
 
         self.assertEqual(UpdateChecker.installer_url(release), "https://example.invalid/setup.exe")
 
+    def test_update_checker_parses_release_tag_from_url(self):
+        self.assertEqual(
+            UpdateChecker.release_tag_from_url("https://github.com/petyablatnoy/crosshud/releases/tag/v4.0.5"),
+            "v4.0.5",
+        )
+        self.assertEqual(UpdateChecker.release_tag_from_url("https://github.com/petyablatnoy/crosshud/releases"), "")
+
+    def test_update_checker_falls_back_when_api_fails(self):
+        checker = UpdateChecker()
+        fallback_data = {
+            "tag_name": "v4.0.5",
+            "html_url": "https://github.com/petyablatnoy/crosshud/releases/tag/v4.0.5",
+            "assets": [
+                {
+                    "name": "CrossHud_Setup.exe",
+                    "browser_download_url": "https://github.com/petyablatnoy/crosshud/releases/latest/download/CrossHud_Setup.exe",
+                }
+            ],
+        }
+        with mock.patch.object(checker, "fetch_api_release_data", side_effect=RuntimeError("rate limit")), \
+                mock.patch.object(checker, "fetch_fallback_release_data", return_value=fallback_data) as fallback:
+            self.assertEqual(checker.fetch_release_data(), fallback_data)
+        fallback.assert_called_once()
+
     def test_update_url_validation_accepts_current_and_legacy_repo_paths(self):
         bridge, _, _ = self.create_bridge()
 
