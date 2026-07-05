@@ -1,12 +1,16 @@
 APP_NAME = "CrossHud"
 APP_DISPLAY_NAME = "CrossHud"
-APP_VERSION = "4.0.2"
-APP_VERSION_TUPLE = (4, 0, 2, 0)
+APP_VERSION = "4.0.3"
+APP_VERSION_TUPLE = (4, 0, 3, 0)
 APP_FILE_VERSION = ".".join(str(part) for part in APP_VERSION_TUPLE)
 APP_USER_MODEL_ID = f"PetyaBlatnoy.CrossHud.App.{APP_VERSION}"
 SINGLE_INSTANCE_SERVER_NAME = f"{APP_NAME}_{APP_VERSION}"
 APP_DATA_DIR_NAME = "CrossHud"
-LEGACY_APP_DATA_DIR_NAMES = ("CrossHud_By_PetyaBlatnoy",)
+LEGACY_APP_DATA_DIR_NAMES = (
+    "CrossHud_By_PetyaBlatnoy",
+    "Crosshud_By_Petyablatnoy",
+    "Crosshud_By_Petyablatnoy-HudsightKiller",
+)
 
 PROJECT_OWNER = "petyablatnoy"
 PROJECT_REPO = "crosshud"

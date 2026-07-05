@@ -31,7 +31,7 @@ class SettingsManagerTests(unittest.TestCase):
             "custom_pixels": [[0, 0, "#00ff00"], [999, 0, "#fff"], ["x", 0, "#00ff00"]]
         })
 
-        self.assertEqual(manager.get("version"), "4.0.2")
+        self.assertEqual(manager.get("version"), "4.0.3")
         self.assertIs(manager.get("enabled"), True)
         self.assertEqual(manager.get("size"), 100.0)
         self.assertEqual(manager.get("color"), "#00FF00")
@@ -50,7 +50,7 @@ class SettingsManagerTests(unittest.TestCase):
         with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
             manager = SettingsManager()
 
-        self.assertEqual(manager.get("version"), "4.0.2")
+        self.assertEqual(manager.get("version"), "4.0.3")
         self.assertEqual(manager.get("hotkey"), "Insert")
         self.assertTrue(manager.consume_warnings())
 
@@ -108,6 +108,7 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(manager.app_data_dir, new_dir)
         self.assertEqual(manager.get("size"), 33.0)
         self.assertTrue(os.path.exists(os.path.join(new_dir, "settings.json")))
+        self.assertFalse(os.path.exists(legacy_dir))
 
     def test_legacy_app_data_is_merged_when_new_log_dir_already_exists(self):
         tempdir = tempfile.TemporaryDirectory()
@@ -134,6 +135,45 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(manager.get("custom_templates")[0]["name"], "old")
         with open(os.path.join(new_dir, "client_id.txt"), "r", encoding="utf-8") as f:
             self.assertEqual(f.read(), "11111111-1111-4111-8111-111111111111")
+        self.assertFalse(os.path.exists(legacy_dir))
+
+    def test_legacy_app_data_is_migrated_from_local_appdata(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        local_appdata = os.path.join(tempdir.name, "Local")
+        legacy_dir = os.path.join(local_appdata, "Crosshud_By_Petyablatnoy")
+        os.makedirs(legacy_dir, exist_ok=True)
+        with open(os.path.join(legacy_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"gap": 12}, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name), \
+                mock.patch.dict(os.environ, {"LOCALAPPDATA": local_appdata, "APPDATA": os.path.join(tempdir.name, "Roaming")}):
+            manager = SettingsManager()
+
+        self.assertEqual(manager.get("gap"), 12.0)
+        self.assertFalse(os.path.exists(legacy_dir))
+
+    def test_conflicting_legacy_settings_are_preserved_before_cleanup(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        legacy_dir = os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy")
+        new_dir = os.path.join(tempdir.name, "CrossHud")
+        os.makedirs(legacy_dir, exist_ok=True)
+        os.makedirs(new_dir, exist_ok=True)
+        with open(os.path.join(legacy_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"size": 55}, f)
+        with open(os.path.join(new_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"gap": 12}, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
+            manager = SettingsManager()
+
+        self.assertEqual(manager.get("gap"), 12.0)
+        self.assertFalse(os.path.exists(legacy_dir))
+        legacy_backups = [name for name in os.listdir(new_dir) if name.startswith("settings.legacy-")]
+        self.assertEqual(len(legacy_backups), 1)
+        with open(os.path.join(new_dir, legacy_backups[0]), "r", encoding="utf-8") as f:
+            self.assertEqual(json.load(f), {"size": 55})
 
 
 if __name__ == "__main__":

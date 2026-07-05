@@ -28,10 +28,14 @@ Function DisableBrowseButton
 FunctionEnd
 Section "Основное приложение" SEC_MAIN
   SectionIn RO
+  SetShellVarContext current
   nsExec::ExecToStack 'taskkill /F /IM "${EXE_NAME}"'
   Pop $0
   Pop $1
   nsExec::ExecToStack 'taskkill /F /IM "CrossHud_By_PetyaBlatnoy.exe"'
+  Pop $0
+  Pop $1
+  nsExec::ExecToStack 'taskkill /F /IM "Crosshud_By_Petyablatnoy-HudsightKiller.exe"'
   Pop $0
   Pop $1
   IfFileExists "$PROGRAMFILES64\${APP_NAME}\${EXE_NAME}" 0 +2
@@ -42,11 +46,20 @@ Section "Основное приложение" SEC_MAIN
     RMDir /r "$PROGRAMFILES64\CrossHud_By_PetyaBlatnoy"
   IfFileExists "$PROGRAMFILES\CrossHud_By_PetyaBlatnoy\CrossHud_By_PetyaBlatnoy.exe" 0 +2
     RMDir /r "$PROGRAMFILES\CrossHud_By_PetyaBlatnoy"
+  IfFileExists "$PROGRAMFILES64\Crosshud_By_Petyablatnoy\*.*" 0 +2
+    RMDir /r "$PROGRAMFILES64\Crosshud_By_Petyablatnoy"
+  IfFileExists "$PROGRAMFILES\Crosshud_By_Petyablatnoy\*.*" 0 +2
+    RMDir /r "$PROGRAMFILES\Crosshud_By_Petyablatnoy"
+  IfFileExists "$PROGRAMFILES64\Crosshud_By_Petyablatnoy-HudsightKiller\*.*" 0 +2
+    RMDir /r "$PROGRAMFILES64\Crosshud_By_Petyablatnoy-HudsightKiller"
+  IfFileExists "$PROGRAMFILES\Crosshud_By_Petyablatnoy-HudsightKiller\*.*" 0 +2
+    RMDir /r "$PROGRAMFILES\Crosshud_By_Petyablatnoy-HudsightKiller"
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$DESKTOP\CrossHud_By_PetyaBlatnoy.lnk"
   Delete "$DESKTOP\Crosshud_By_Petyablatnoy-HudsightKiller.lnk"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
   RMDir /r "$SMPROGRAMS\CrossHud_By_PetyaBlatnoy"
+  RMDir /r "$SMPROGRAMS\Crosshud_By_Petyablatnoy"
   RMDir /r "$SMPROGRAMS\Crosshud_By_Petyablatnoy-HudsightKiller"
   SetOutPath "$INSTDIR"
   File /r "dist\${APP_NAME}\*.*"
@@ -83,9 +96,11 @@ Section "Основное приложение" SEC_MAIN
     Exec '"$INSTDIR\${EXE_NAME}"'
 SectionEnd
 Section "Ярлык на рабочем столе" SEC_DESKTOP
+  SetShellVarContext current
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE_NAME}"
 SectionEnd
 Section "Ярлыки в меню Пуск" SEC_STARTMENU
+  SetShellVarContext current
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   CreateShortCut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${EXE_NAME}"
   CreateShortCut "$SMPROGRAMS\${APP_NAME}\Удалить.lnk" "$INSTDIR\Uninstall.exe"
@@ -99,6 +114,7 @@ LangString DESC_SEC_STARTMENU ${LANG_RUSSIAN} "Создать ярлыки в м
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC_STARTMENU} $(DESC_SEC_STARTMENU)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 Section "Uninstall"
+  SetShellVarContext current
   nsExec::ExecToStack 'taskkill /F /IM "${EXE_NAME}"'
   Pop $0
   Pop $1
@@ -136,4 +152,14 @@ Section "Uninstall"
   MessageBox MB_YESNO "Удалить ваши настройки и профили прицелов?" IDNO +2
   RMDir /r "$PROFILE\CrossHud"
   RMDir /r "$PROFILE\CrossHud_By_PetyaBlatnoy"
+  RMDir /r "$PROFILE\Crosshud_By_Petyablatnoy"
+  RMDir /r "$PROFILE\Crosshud_By_Petyablatnoy-HudsightKiller"
+  RMDir /r "$LOCALAPPDATA\CrossHud"
+  RMDir /r "$LOCALAPPDATA\CrossHud_By_PetyaBlatnoy"
+  RMDir /r "$LOCALAPPDATA\Crosshud_By_Petyablatnoy"
+  RMDir /r "$LOCALAPPDATA\Crosshud_By_Petyablatnoy-HudsightKiller"
+  RMDir /r "$APPDATA\CrossHud"
+  RMDir /r "$APPDATA\CrossHud_By_PetyaBlatnoy"
+  RMDir /r "$APPDATA\Crosshud_By_Petyablatnoy"
+  RMDir /r "$APPDATA\Crosshud_By_Petyablatnoy-HudsightKiller"
 SectionEnd
