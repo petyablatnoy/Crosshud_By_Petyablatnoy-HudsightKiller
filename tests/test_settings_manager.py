@@ -10,7 +10,7 @@ from settings_manager import SettingsManager
 class SettingsManagerTests(unittest.TestCase):
     def create_manager(self, initial_settings):
         tempdir = tempfile.TemporaryDirectory()
-        app_dir = os.path.join(tempdir.name, "CrossHud_By_PetyaBlatnoy")
+        app_dir = os.path.join(tempdir.name, "CrossHud")
         os.makedirs(app_dir, exist_ok=True)
         with open(os.path.join(app_dir, "settings.json"), "w", encoding="utf-8") as f:
             json.dump(initial_settings, f)
@@ -31,7 +31,7 @@ class SettingsManagerTests(unittest.TestCase):
             "custom_pixels": [[0, 0, "#00ff00"], [999, 0, "#fff"], ["x", 0, "#00ff00"]]
         })
 
-        self.assertEqual(manager.get("version"), "4")
+        self.assertEqual(manager.get("version"), "4.0.1")
         self.assertIs(manager.get("enabled"), True)
         self.assertEqual(manager.get("size"), 100.0)
         self.assertEqual(manager.get("color"), "#00FF00")
@@ -43,14 +43,14 @@ class SettingsManagerTests(unittest.TestCase):
     def test_broken_json_uses_defaults_and_warns(self):
         tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(tempdir.cleanup)
-        app_dir = os.path.join(tempdir.name, "CrossHud_By_PetyaBlatnoy")
+        app_dir = os.path.join(tempdir.name, "CrossHud")
         os.makedirs(app_dir, exist_ok=True)
         with open(os.path.join(app_dir, "settings.json"), "w", encoding="utf-8") as f:
             f.write("{bad json")
         with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
             manager = SettingsManager()
 
-        self.assertEqual(manager.get("version"), "4")
+        self.assertEqual(manager.get("version"), "4.0.1")
         self.assertEqual(manager.get("hotkey"), "Insert")
         self.assertTrue(manager.consume_warnings())
 
@@ -92,6 +92,22 @@ class SettingsManagerTests(unittest.TestCase):
 
         self.assertIsNone(manager.get("unexpected_key"))
         self.assertTrue(manager.consume_warnings())
+
+    def test_legacy_app_data_is_migrated(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        legacy_dir = os.path.join(tempdir.name, "CrossHud_By_PetyaBlatnoy")
+        os.makedirs(legacy_dir, exist_ok=True)
+        with open(os.path.join(legacy_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"size": 33}, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
+            manager = SettingsManager()
+
+        new_dir = os.path.join(tempdir.name, "CrossHud")
+        self.assertEqual(manager.app_data_dir, new_dir)
+        self.assertEqual(manager.get("size"), 33.0)
+        self.assertTrue(os.path.exists(os.path.join(new_dir, "settings.json")))
 
 
 if __name__ == "__main__":

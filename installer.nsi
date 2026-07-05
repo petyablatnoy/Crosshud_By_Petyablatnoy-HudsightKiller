@@ -31,12 +31,21 @@ Section "Основное приложение" SEC_MAIN
   nsExec::ExecToStack 'taskkill /F /IM "${EXE_NAME}"'
   Pop $0
   Pop $1
+  nsExec::ExecToStack 'taskkill /F /IM "CrossHud_By_PetyaBlatnoy.exe"'
+  Pop $0
+  Pop $1
   IfFileExists "$PROGRAMFILES64\${APP_NAME}\${EXE_NAME}" 0 +2
     RMDir /r "$PROGRAMFILES64\${APP_NAME}"
   IfFileExists "$PROGRAMFILES\${APP_NAME}\${EXE_NAME}" 0 +2
     RMDir /r "$PROGRAMFILES\${APP_NAME}"
+  IfFileExists "$PROGRAMFILES64\CrossHud_By_PetyaBlatnoy\CrossHud_By_PetyaBlatnoy.exe" 0 +2
+    RMDir /r "$PROGRAMFILES64\CrossHud_By_PetyaBlatnoy"
+  IfFileExists "$PROGRAMFILES\CrossHud_By_PetyaBlatnoy\CrossHud_By_PetyaBlatnoy.exe" 0 +2
+    RMDir /r "$PROGRAMFILES\CrossHud_By_PetyaBlatnoy"
   Delete "$DESKTOP\${APP_NAME}.lnk"
+  Delete "$DESKTOP\CrossHud_By_PetyaBlatnoy.lnk"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
+  RMDir /r "$SMPROGRAMS\CrossHud_By_PetyaBlatnoy"
   SetOutPath "$INSTDIR"
   File /r "dist\${APP_NAME}\*.*"
   File "dist\CrossHudCert.cer"
@@ -67,6 +76,9 @@ Section "Основное приложение" SEC_MAIN
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoModify" 1
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoRepair" 1
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CrossHud_By_PetyaBlatnoy"
+  IfSilent 0 +2
+    Exec '"$INSTDIR\${EXE_NAME}"'
 SectionEnd
 Section "Ярлык на рабочем столе" SEC_DESKTOP
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE_NAME}"
@@ -118,5 +130,6 @@ Section "Uninstall"
   ${EndIf}
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
   MessageBox MB_YESNO "Удалить ваши настройки и профили прицелов?" IDNO +2
+  RMDir /r "$PROFILE\CrossHud"
   RMDir /r "$PROFILE\CrossHud_By_PetyaBlatnoy"
 SectionEnd

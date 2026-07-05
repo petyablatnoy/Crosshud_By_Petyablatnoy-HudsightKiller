@@ -5,7 +5,7 @@ if (-not (Test-Path Cert:\CurrentUser\My)) {
 }
 
 $c = "CrossHud_Permanent_Cert"
-$f = "dist\CrossHud_By_PetyaBlatnoy\CrossHud_By_PetyaBlatnoy.exe"
+$f = "dist\CrossHud\CrossHud.exe"
 $e = "dist\CrossHudCert.cer"
 
 if (-not (Test-Path $f)) {

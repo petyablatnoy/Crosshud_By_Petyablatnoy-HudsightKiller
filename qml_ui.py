@@ -11,7 +11,15 @@ from PySide6.QtCore import QCoreApplication, QEvent, QObject, Property, QThread,
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QFont, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
-from app_metadata import APP_NAME, APP_VERSION, PROJECT_URL as PROJECT_PAGE_URL, UPDATE_API_URL, UPDATE_RELEASES_PATH
+from app_metadata import (
+    APP_DATA_DIR_NAME,
+    APP_NAME,
+    APP_VERSION,
+    LEGACY_UPDATE_RELEASES_PATHS,
+    PROJECT_URL as PROJECT_PAGE_URL,
+    UPDATE_API_URL,
+    UPDATE_RELEASES_PATH,
+)
 from diagnostics import DiagnosticService
 from hotkeys import HOTKEY_NAMES
 
@@ -130,6 +138,7 @@ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
 
 class UiBridge(QObject):
     UPDATE_REPO_PATH = UPDATE_RELEASES_PATH
+    UPDATE_REPO_PATHS = (UPDATE_RELEASES_PATH, *LEGACY_UPDATE_RELEASES_PATHS)
     PROJECT_URL = PROJECT_PAGE_URL
 
     revisionChanged = Signal()
@@ -352,8 +361,16 @@ class UiBridge(QObject):
                     path = f'"{sys.executable}"'
                 else:
                     path = f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
-                winreg.SetValueEx(key, "CrossHud_PetyaBlatnoy", 0, winreg.REG_SZ, path)
+                winreg.SetValueEx(key, "CrossHud", 0, winreg.REG_SZ, path)
+                try:
+                    winreg.DeleteValue(key, "CrossHud_PetyaBlatnoy")
+                except FileNotFoundError:
+                    pass
             else:
+                try:
+                    winreg.DeleteValue(key, "CrossHud")
+                except FileNotFoundError:
+                    pass
                 try:
                     winreg.DeleteValue(key, "CrossHud_PetyaBlatnoy")
                 except FileNotFoundError:
@@ -546,7 +563,11 @@ class UiBridge(QObject):
     def _is_valid_update_url(self, url):
         try:
             parsed = urlparse(url)
-            return parsed.scheme == "https" and parsed.netloc.lower() == "github.com" and parsed.path.startswith(self.UPDATE_REPO_PATH)
+            return (
+                parsed.scheme == "https"
+                and parsed.netloc.lower() == "github.com"
+                and any(parsed.path.startswith(path) for path in self.UPDATE_REPO_PATHS)
+            )
         except Exception:
             return False
 
@@ -563,7 +584,7 @@ class UiBridge(QObject):
             self._logs_text = "Не удалось прочитать лог."
 
     def log_file_path(self):
-        return os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy", "logs", "crosshud.log")
+        return os.path.join(os.path.expanduser("~"), APP_DATA_DIR_NAME, "logs", "crosshud.log")
 
     def resource_dir(self):
         if getattr(sys, "frozen", False):

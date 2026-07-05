@@ -41,7 +41,7 @@ class UiBridgeTests(unittest.TestCase):
 
     def create_bridge(self):
         tempdir = tempfile.TemporaryDirectory()
-        app_dir = os.path.join(tempdir.name, "CrossHud_By_PetyaBlatnoy")
+        app_dir = os.path.join(tempdir.name, "CrossHud")
         os.makedirs(app_dir, exist_ok=True)
         with open(os.path.join(app_dir, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"check_updates": False, "enabled": False}, f)
@@ -134,9 +134,9 @@ class UiBridgeTests(unittest.TestCase):
         self.assertTrue(bridge.dirty)
 
     def test_update_checker_version_comparison(self):
-        self.assertFalse(UpdateChecker.is_newer("Crosshud_By_Petyablatnoy_SetupV.3.1", "4"))
-        self.assertFalse(UpdateChecker.is_newer("v4.0.0", "4"))
-        self.assertTrue(UpdateChecker.is_newer("v4.1.0", "4"))
+        self.assertFalse(UpdateChecker.is_newer("Crosshud_By_Petyablatnoy_SetupV.3.1", "4.0.1"))
+        self.assertFalse(UpdateChecker.is_newer("v4.0.0", "4.0.1"))
+        self.assertTrue(UpdateChecker.is_newer("v4.1.0", "4.0.1"))
 
     def test_update_checker_display_version(self):
         self.assertEqual(UpdateChecker.display_version("Crosshud_By_Petyablatnoy_SetupV.3.1"), "3.1")
@@ -146,11 +146,19 @@ class UiBridgeTests(unittest.TestCase):
         release = {
             "assets": [
                 {"name": "sourcecode.zip", "browser_download_url": "https://example.invalid/source.zip"},
-                {"name": "CrossHud_By_PetyaBlatnoy_Setup.exe", "browser_download_url": "https://example.invalid/setup.exe"},
+                {"name": "CrossHud_Setup.exe", "browser_download_url": "https://example.invalid/setup.exe"},
             ]
         }
 
         self.assertEqual(UpdateChecker.installer_url(release), "https://example.invalid/setup.exe")
+
+    def test_update_url_validation_accepts_current_and_legacy_repo_paths(self):
+        bridge, _, _ = self.create_bridge()
+
+        self.assertTrue(bridge.isValidUpdateUrl("https://github.com/petyablatnoy/crosshud/releases/tag/v4.0.1"))
+        self.assertTrue(bridge.isValidUpdateUrl("https://github.com/petyablatnoy/crosshud/releases/download/v4.0.1/CrossHud_Setup.exe"))
+        self.assertTrue(bridge.isValidUpdateUrl("https://github.com/petyablatnoy/Crosshud_By_Petyablatnoy-HudsightKiller/releases/tag/v4.0.0"))
+        self.assertFalse(bridge.isValidUpdateUrl("https://github.com/example/crosshud/releases/tag/v4.0.1"))
 
 
 if __name__ == "__main__":

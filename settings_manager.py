@@ -3,10 +3,11 @@ import json
 import logging
 import os
 import re
+import shutil
 from typing import Any, Dict, List, Optional, Tuple
 from threading import Lock
 
-from app_metadata import APP_VERSION
+from app_metadata import APP_DATA_DIR_NAME, APP_VERSION, LEGACY_APP_DATA_DIR_NAMES
 from hotkeys import HOTKEY_NAMES
 
 
@@ -73,17 +74,33 @@ class SettingsManager:
         self._warnings: List[str] = []
         self._saved_custom_pixels_snapshot: List[List[Any]] = []
         self._saved_settings_snapshot: Dict[str, Any] = {}
-        self.app_data_dir = os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy")
+        home_dir = os.path.expanduser("~")
+        self.app_data_dir = os.path.join(home_dir, APP_DATA_DIR_NAME)
         self.profiles_dir = os.path.join(self.app_data_dir, "profiles")
         self.is_profile_load = bool(settings_file)
         if self.is_profile_load:
             self.settings_file = settings_file
             self.load_from_file(settings_file)
         else:
+            self._migrate_legacy_app_data(home_dir)
             os.makedirs(self.app_data_dir, exist_ok=True)
             os.makedirs(self.profiles_dir, exist_ok=True)
             self.settings_file = os.path.join(self.app_data_dir, 'settings.json')
             self._initialize_settings()
+
+    def _migrate_legacy_app_data(self, home_dir: str) -> None:
+        if os.path.exists(self.app_data_dir):
+            return
+        for dirname in LEGACY_APP_DATA_DIR_NAMES:
+            legacy_dir = os.path.join(home_dir, dirname)
+            if not os.path.isdir(legacy_dir):
+                continue
+            try:
+                shutil.copytree(legacy_dir, self.app_data_dir)
+                logging.info("Migrated app data from %s to %s", legacy_dir, self.app_data_dir)
+            except Exception:
+                logging.exception("Failed to migrate app data from %s", legacy_dir)
+            return
 
     def _warn(self, message: str) -> None:
         logging.warning(message)

@@ -6,7 +6,7 @@ import ctypes
 from logging.handlers import RotatingFileHandler
 from PySide6.QtCore import QCoreApplication
 
-from app_metadata import APP_NAME, APP_USER_MODEL_ID, APP_VERSION
+from app_metadata import APP_DATA_DIR_NAME, APP_NAME, APP_USER_MODEL_ID, APP_VERSION
 
 
 LOG_MAX_BYTES = int(7.5 * 1024 * 1024)
@@ -107,7 +107,7 @@ def rotate_logs_on_start(log_file, backup_count=LOG_BACKUP_COUNT):
 
 def setup_logging(debug_mode=False):
     level = logging.DEBUG if debug_mode else logging.INFO
-    log_dir = os.path.join(os.path.expanduser("~"), "CrossHud_By_PetyaBlatnoy", "logs")
+    log_dir = os.path.join(os.path.expanduser("~"), APP_DATA_DIR_NAME, "logs")
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, "crosshud.log")
     rotate_logs_on_start(log_file)
