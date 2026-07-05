@@ -31,7 +31,7 @@ class SettingsManagerTests(unittest.TestCase):
             "custom_pixels": [[0, 0, "#00ff00"], [999, 0, "#fff"], ["x", 0, "#00ff00"]]
         })
 
-        self.assertEqual(manager.get("version"), "4.0.1")
+        self.assertEqual(manager.get("version"), "4.0.2")
         self.assertIs(manager.get("enabled"), True)
         self.assertEqual(manager.get("size"), 100.0)
         self.assertEqual(manager.get("color"), "#00FF00")
@@ -50,7 +50,7 @@ class SettingsManagerTests(unittest.TestCase):
         with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
             manager = SettingsManager()
 
-        self.assertEqual(manager.get("version"), "4.0.1")
+        self.assertEqual(manager.get("version"), "4.0.2")
         self.assertEqual(manager.get("hotkey"), "Insert")
         self.assertTrue(manager.consume_warnings())
 
@@ -108,6 +108,32 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(manager.app_data_dir, new_dir)
         self.assertEqual(manager.get("size"), 33.0)
         self.assertTrue(os.path.exists(os.path.join(new_dir, "settings.json")))
+
+    def test_legacy_app_data_is_merged_when_new_log_dir_already_exists(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        legacy_dir = os.path.join(tempdir.name, "CrossHud_By_PetyaBlatnoy")
+        legacy_profiles = os.path.join(legacy_dir, "profiles")
+        new_dir = os.path.join(tempdir.name, "CrossHud")
+        os.makedirs(legacy_profiles, exist_ok=True)
+        os.makedirs(os.path.join(new_dir, "logs"), exist_ok=True)
+        with open(os.path.join(legacy_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"size": 44, "custom_pixels": [[1, 1, "#00ff00"]]}, f)
+        with open(os.path.join(legacy_dir, "client_id.txt"), "w", encoding="utf-8") as f:
+            f.write("11111111-1111-4111-8111-111111111111")
+        with open(os.path.join(legacy_profiles, "old.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "old", "pixels": []}, f)
+        with open(os.path.join(new_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump(SettingsManager.DEFAULT_SETTINGS, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
+            manager = SettingsManager()
+
+        self.assertEqual(manager.get("size"), 44.0)
+        self.assertEqual(manager.get("custom_pixels"), [[1, 1, "#00FF00"]])
+        self.assertEqual(manager.get("custom_templates")[0]["name"], "old")
+        with open(os.path.join(new_dir, "client_id.txt"), "r", encoding="utf-8") as f:
+            self.assertEqual(f.read(), "11111111-1111-4111-8111-111111111111")
 
 
 if __name__ == "__main__":

@@ -89,18 +89,75 @@ class SettingsManager:
             self._initialize_settings()
 
     def _migrate_legacy_app_data(self, home_dir: str) -> None:
-        if os.path.exists(self.app_data_dir):
-            return
         for dirname in LEGACY_APP_DATA_DIR_NAMES:
             legacy_dir = os.path.join(home_dir, dirname)
             if not os.path.isdir(legacy_dir):
                 continue
             try:
-                shutil.copytree(legacy_dir, self.app_data_dir)
+                if not os.path.exists(self.app_data_dir):
+                    shutil.copytree(legacy_dir, self.app_data_dir)
+                else:
+                    self._merge_legacy_app_data(legacy_dir)
                 logging.info("Migrated app data from %s to %s", legacy_dir, self.app_data_dir)
             except Exception:
                 logging.exception("Failed to migrate app data from %s", legacy_dir)
             return
+
+    def _merge_legacy_app_data(self, legacy_dir: str) -> None:
+        os.makedirs(self.app_data_dir, exist_ok=True)
+        legacy_settings = os.path.join(legacy_dir, "settings.json")
+        current_settings = os.path.join(self.app_data_dir, "settings.json")
+        settings_replaced = False
+        if os.path.exists(legacy_settings) and (
+            not os.path.exists(current_settings)
+            or self._should_replace_with_legacy_settings(current_settings, legacy_settings)
+        ):
+            shutil.copy2(legacy_settings, current_settings)
+            settings_replaced = True
+
+        legacy_client_id = os.path.join(legacy_dir, "client_id.txt")
+        current_client_id = os.path.join(self.app_data_dir, "client_id.txt")
+        if os.path.exists(legacy_client_id) and (settings_replaced or not os.path.exists(current_client_id)):
+            shutil.copy2(legacy_client_id, current_client_id)
+
+        self._copy_missing_tree(os.path.join(legacy_dir, "profiles"), os.path.join(self.app_data_dir, "profiles"))
+        self._copy_missing_tree(
+            os.path.join(legacy_dir, "support_reports"),
+            os.path.join(self.app_data_dir, "support_reports"),
+        )
+
+    def _copy_missing_tree(self, source_dir: str, target_dir: str) -> None:
+        if not os.path.isdir(source_dir):
+            return
+        for root, _, files in os.walk(source_dir):
+            rel_root = os.path.relpath(root, source_dir)
+            target_root = target_dir if rel_root == "." else os.path.join(target_dir, rel_root)
+            os.makedirs(target_root, exist_ok=True)
+            for filename in files:
+                source_path = os.path.join(root, filename)
+                target_path = os.path.join(target_root, filename)
+                if not os.path.exists(target_path):
+                    shutil.copy2(source_path, target_path)
+
+    def _should_replace_with_legacy_settings(self, current_path: str, legacy_path: str) -> bool:
+        try:
+            with open(current_path, "r", encoding="utf-8") as f:
+                current = json.load(f)
+            with open(legacy_path, "r", encoding="utf-8") as f:
+                legacy = json.load(f)
+        except Exception:
+            return False
+        return not self._settings_has_user_data(current) and self._settings_has_user_data(legacy)
+
+    def _settings_has_user_data(self, data: Any) -> bool:
+        if not isinstance(data, dict):
+            return False
+        for key, default in self.DEFAULT_SETTINGS.items():
+            if key == "version":
+                continue
+            if key in data and data[key] != default:
+                return True
+        return False
 
     def _warn(self, message: str) -> None:
         logging.warning(message)
