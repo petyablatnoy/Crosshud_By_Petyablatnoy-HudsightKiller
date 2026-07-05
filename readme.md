@@ -1,4 +1,4 @@
-# crosshud v4
+# crosshud
 
 бесплатный открытый прицел оверлей для windows.
 
