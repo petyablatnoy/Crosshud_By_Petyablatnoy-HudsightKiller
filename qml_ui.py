@@ -395,17 +395,25 @@ class UiBridge(QObject):
 
     @Slot(bool)
     def setAutostart(self, state):
+        previous_state = self.settings.get("autostart", False)
         try:
             set_autostart(state)
-            if not self.settings.set("autostart", state):
+            if not self.settings.set("autostart", state) or not self.settings.save_setting_value("autostart"):
+                try:
+                    set_autostart(previous_state)
+                except Exception:
+                    logging.exception("Failed to roll back autostart registry entry")
+                self.settings.set("autostart", previous_state)
                 self.show_toast("Не удалось изменить автозапуск", "error")
+                self.update_dirty_state()
                 self.bump_revision()
                 return
             self.update_dirty_state()
             self.bump_revision()
         except Exception:
             logging.exception("Failed to update autostart")
-            self.settings.set("autostart", not state)
+            self.settings.set("autostart", previous_state)
+            self.update_dirty_state()
             self.bump_revision()
             self.show_toast("Не удалось изменить автозапуск", "error")
 

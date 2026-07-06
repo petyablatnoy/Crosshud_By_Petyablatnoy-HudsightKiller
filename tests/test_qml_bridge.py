@@ -133,6 +133,33 @@ class UiBridgeTests(unittest.TestCase):
         self.assertEqual(overlay.refresh_count, 1)
         self.assertTrue(bridge.dirty)
 
+    def test_autostart_saves_immediately_and_clears_dirty_when_only_change(self):
+        bridge, settings, _ = self.create_bridge()
+
+        with mock.patch("qml_ui.set_autostart") as set_autostart:
+            bridge.setAutostart(True)
+
+        set_autostart.assert_called_once_with(True)
+        self.assertTrue(settings.get("autostart"))
+        self.assertFalse(bridge.dirty)
+        with open(settings.settings_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertTrue(data["autostart"])
+
+    def test_autostart_save_keeps_other_unsaved_settings_dirty(self):
+        bridge, settings, _ = self.create_bridge()
+
+        bridge.setSetting("size", 42)
+        with mock.patch("qml_ui.set_autostart") as set_autostart:
+            bridge.setAutostart(True)
+
+        set_autostart.assert_called_once_with(True)
+        self.assertTrue(bridge.dirty)
+        with open(settings.settings_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertTrue(data["autostart"])
+        self.assertEqual(data["size"], 20.0)
+
     def test_update_checker_version_comparison(self):
         self.assertFalse(UpdateChecker.is_newer("Crosshud_By_Petyablatnoy_SetupV.3.1", "4.0.1"))
         self.assertFalse(UpdateChecker.is_newer("v4.0.0", "4.0.1"))

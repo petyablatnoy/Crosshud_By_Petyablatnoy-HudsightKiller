@@ -141,7 +141,10 @@ class SettingsManager:
         elif os.path.exists(legacy_client_id):
             self._copy_legacy_file_if_distinct(legacy_client_id, "client_id.txt", legacy_dir)
 
-        self._copy_missing_tree(os.path.join(legacy_dir, "profiles"), os.path.join(self.app_data_dir, "profiles"))
+        self._copy_profile_tree_with_legacy_conflicts(
+            os.path.join(legacy_dir, "profiles"),
+            os.path.join(self.app_data_dir, "profiles"),
+        )
         self._copy_missing_tree(
             os.path.join(legacy_dir, "support_reports"),
             os.path.join(self.app_data_dir, "support_reports"),
@@ -160,6 +163,57 @@ class SettingsManager:
                 target_path = os.path.join(target_root, filename)
                 if not os.path.exists(target_path):
                     shutil.copy2(source_path, target_path)
+
+    def _copy_profile_tree_with_legacy_conflicts(self, source_dir: str, target_dir: str) -> None:
+        if not os.path.isdir(source_dir):
+            return
+        for root, _, files in os.walk(source_dir):
+            rel_root = os.path.relpath(root, source_dir)
+            target_root = target_dir if rel_root == "." else os.path.join(target_dir, rel_root)
+            os.makedirs(target_root, exist_ok=True)
+            for filename in files:
+                source_path = os.path.join(root, filename)
+                target_path = os.path.join(target_root, filename)
+                if not os.path.exists(target_path):
+                    shutil.copy2(source_path, target_path)
+                    continue
+                if self._files_equal(source_path, target_path):
+                    continue
+                if filename.lower().endswith(".json"):
+                    legacy_path = self._legacy_profile_path(target_root, filename)
+                    self._copy_legacy_profile(source_path, legacy_path)
+
+    def _legacy_profile_path(self, target_root: str, filename: str) -> str:
+        base, ext = os.path.splitext(filename)
+        candidate = os.path.join(target_root, f"{base}.legacy{ext}")
+        if not os.path.exists(candidate):
+            return candidate
+        index = 2
+        while True:
+            candidate = os.path.join(target_root, f"{base}.legacy-{index}{ext}")
+            if not os.path.exists(candidate):
+                return candidate
+            index += 1
+
+    def _copy_legacy_profile(self, source_path: str, target_path: str) -> None:
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                shutil.copy2(source_path, target_path)
+                return
+            name = data.get("name")
+            if isinstance(name, str) and name.strip():
+                display_name = name.strip()
+            else:
+                display_name = os.path.splitext(os.path.basename(source_path))[0]
+            if not display_name.endswith(" (legacy)"):
+                display_name = f"{display_name} (legacy)"
+            data["name"] = display_name
+            with open(target_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        except Exception:
+            shutil.copy2(source_path, target_path)
 
     def _copy_legacy_file_if_distinct(self, source_path: str, filename: str, legacy_dir: str) -> None:
         target_path = os.path.join(self.app_data_dir, filename)
@@ -365,6 +419,36 @@ class SettingsManager:
             return True
         except Exception:
             logging.exception("Failed to save settings")
+            return False
+
+    def save_setting_value(self, key: str) -> bool:
+        if self.is_profile_load:
+            return True
+        if key not in self.DEFAULT_SETTINGS or key == "custom_pixels":
+            return False
+
+        try:
+            with self.lock:
+                if key not in self.settings:
+                    return False
+                settings_data = copy.deepcopy(self._saved_settings_snapshot)
+                if not settings_data:
+                    settings_data = copy.deepcopy(self.DEFAULT_SETTINGS)
+                    if not settings_data.get("custom_pixels"):
+                        settings_data.pop("custom_pixels", None)
+                settings_data[key] = copy.deepcopy(self.settings[key])
+                settings_data["version"] = self.CURRENT_VERSION
+                if not settings_data.get("custom_pixels"):
+                    settings_data.pop("custom_pixels", None)
+                saved_snapshot = copy.deepcopy(settings_data)
+            os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
+            with open(self.settings_file, "w", encoding="utf-8") as f:
+                json.dump(settings_data, f, indent=2, ensure_ascii=False)
+            with self.lock:
+                self._saved_settings_snapshot = saved_snapshot
+            return True
+        except Exception:
+            logging.exception("Failed to save setting value: %s", key)
             return False
 
     def load_from_file(self, filepath: str) -> bool:

@@ -1,7 +1,6 @@
 import sys
 import os
 import logging
-import atexit
 import subprocess
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap, QFont
@@ -37,7 +36,7 @@ class CrossHudApp:
         self.exiting = False
         self.res = ResolutionDetector.get_resolution()
         self.settings.set_resolution(*self.res)
-        ResolutionDetector.monitor_resolution_changes(self.on_res_change)
+        self.resolution_monitor = ResolutionDetector.monitor_resolution_changes(self.on_res_change)
         logging.info("Application initialized; detected_resolution=%sx%s", self.res[0], self.res[1])
 
     def _repair_autostart(self):
@@ -148,8 +147,12 @@ class CrossHudApp:
 
     def _finish_exit(self):
         try:
+            if self.resolution_monitor:
+                self.resolution_monitor.stop()
             self.window.shutdown()
             self.overlay.cleanup()
+            if self.resolution_monitor and self.resolution_monitor.is_alive():
+                self.resolution_monitor.join(timeout=1.5)
         except Exception:
             logging.exception("Error while exiting CrossHud")
         logging.info("Application stopped")

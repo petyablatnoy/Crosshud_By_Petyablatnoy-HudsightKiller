@@ -31,7 +31,7 @@ class SettingsManagerTests(unittest.TestCase):
             "custom_pixels": [[0, 0, "#00ff00"], [999, 0, "#fff"], ["x", 0, "#00ff00"]]
         })
 
-        self.assertEqual(manager.get("version"), "4.0.5")
+        self.assertEqual(manager.get("version"), "4.0.6")
         self.assertIs(manager.get("enabled"), True)
         self.assertEqual(manager.get("size"), 100.0)
         self.assertEqual(manager.get("color"), "#00FF00")
@@ -50,7 +50,7 @@ class SettingsManagerTests(unittest.TestCase):
         with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
             manager = SettingsManager()
 
-        self.assertEqual(manager.get("version"), "4.0.5")
+        self.assertEqual(manager.get("version"), "4.0.6")
         self.assertEqual(manager.get("hotkey"), "Insert")
         self.assertTrue(manager.consume_warnings())
 
@@ -174,6 +174,94 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(len(legacy_backups), 1)
         with open(os.path.join(new_dir, legacy_backups[0]), "r", encoding="utf-8") as f:
             self.assertEqual(json.load(f), {"size": 55})
+
+    def test_conflicting_legacy_profile_is_preserved_with_legacy_label(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        legacy_profiles = os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy", "profiles")
+        new_dir = os.path.join(tempdir.name, "CrossHud")
+        new_profiles = os.path.join(new_dir, "profiles")
+        os.makedirs(legacy_profiles, exist_ok=True)
+        os.makedirs(new_profiles, exist_ok=True)
+        with open(os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy", "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"size": 55}, f)
+        with open(os.path.join(new_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"gap": 12}, f)
+        with open(os.path.join(new_profiles, "dot.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "Dot", "pixels": [[2, 2, "#FF0000"]]}, f)
+        with open(os.path.join(legacy_profiles, "dot.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "Dot", "pixels": [[1, 1, "#00FF00"]]}, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
+            manager = SettingsManager()
+
+        legacy_path = os.path.join(new_profiles, "dot.legacy.json")
+        self.assertTrue(os.path.exists(legacy_path))
+        with open(legacy_path, "r", encoding="utf-8") as f:
+            self.assertEqual(json.load(f)["name"], "Dot (legacy)")
+        self.assertEqual(
+            [template["name"] for template in manager.get("custom_templates")],
+            ["Dot", "Dot (legacy)"],
+        )
+
+    def test_conflicting_legacy_profile_uses_numbered_legacy_filename(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        legacy_profiles = os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy", "profiles")
+        new_dir = os.path.join(tempdir.name, "CrossHud")
+        new_profiles = os.path.join(new_dir, "profiles")
+        os.makedirs(legacy_profiles, exist_ok=True)
+        os.makedirs(new_profiles, exist_ok=True)
+        with open(os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy", "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"size": 55}, f)
+        with open(os.path.join(new_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"gap": 12}, f)
+        with open(os.path.join(new_profiles, "dot.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "Dot", "pixels": [[2, 2, "#FF0000"]]}, f)
+        with open(os.path.join(new_profiles, "dot.legacy.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "Dot (legacy)", "pixels": [[3, 3, "#FFFFFF"]]}, f)
+        with open(os.path.join(legacy_profiles, "dot.json"), "w", encoding="utf-8") as f:
+            json.dump({"name": "Dot", "pixels": [[1, 1, "#00FF00"]]}, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
+            SettingsManager()
+
+        self.assertTrue(os.path.exists(os.path.join(new_profiles, "dot.legacy-2.json")))
+
+    def test_identical_legacy_profile_conflict_does_not_create_copy(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        legacy_profiles = os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy", "profiles")
+        new_dir = os.path.join(tempdir.name, "CrossHud")
+        new_profiles = os.path.join(new_dir, "profiles")
+        os.makedirs(legacy_profiles, exist_ok=True)
+        os.makedirs(new_profiles, exist_ok=True)
+        profile_data = {"name": "Dot", "pixels": [[1, 1, "#00FF00"]]}
+        with open(os.path.join(tempdir.name, "Crosshud_By_Petyablatnoy", "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"size": 55}, f)
+        with open(os.path.join(new_dir, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"gap": 12}, f)
+        for path in (os.path.join(new_profiles, "dot.json"), os.path.join(legacy_profiles, "dot.json")):
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(profile_data, f)
+
+        with mock.patch("settings_manager.os.path.expanduser", return_value=tempdir.name):
+            SettingsManager()
+
+        self.assertFalse(os.path.exists(os.path.join(new_profiles, "dot.legacy.json")))
+
+    def test_save_setting_value_persists_only_named_setting(self):
+        manager, app_dir = self.create_manager({"autostart": False, "size": 20})
+
+        manager.set("size", 42)
+        manager.set("autostart", True)
+
+        self.assertTrue(manager.save_setting_value("autostart"))
+        with open(os.path.join(app_dir, "settings.json"), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertTrue(data["autostart"])
+        self.assertEqual(data["size"], 20.0)
+        self.assertTrue(manager.has_unsaved_settings())
 
 
 if __name__ == "__main__":

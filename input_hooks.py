@@ -7,6 +7,8 @@ from hotkeys import HOTKEY_VK_MAP
 from win32_api import (
     EVENT_SYSTEM_FOREGROUND,
     LOWLEVELMOUSEPROC,
+    MOD_NOREPEAT,
+    PM_REMOVE,
     WH_MOUSE_LL,
     WINEVENT_OUTOFCONTEXT,
     WINEVENT_SKIPOWNPROCESS,
@@ -51,23 +53,34 @@ class HotkeyListener:
         while not self.stop_event.is_set():
             key_name = self.settings.get("hotkey", "Insert")
             vk = HOTKEY_VK_MAP.get(key_name, HOTKEY_VK_MAP["Insert"])
-            if user32.RegisterHotKey(None, self.HOTKEY_ID, 0, vk):
+            if user32.RegisterHotKey(None, self.HOTKEY_ID, MOD_NOREPEAT, vk):
                 self.restart_event.clear()
-                self._message_loop()
+                self._message_loop(vk)
+                user32.UnregisterHotKey(None, self.HOTKEY_ID)
+            elif user32.RegisterHotKey(None, self.HOTKEY_ID, 0, vk):
+                logging.warning("Hotkey repeat suppression unavailable for %s", key_name)
+                self.restart_event.clear()
+                self._message_loop(vk)
                 user32.UnregisterHotKey(None, self.HOTKEY_ID)
             else:
                 self.stop_event.wait(1)
 
-    def _message_loop(self) -> None:
+    def _message_loop(self, vk: int) -> None:
         msg = wintypes.MSG()
+        hotkey_pressed = False
         while not self.stop_event.is_set() and not self.restart_event.is_set():
-            result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-            if result <= 0:
-                break
-            if msg.message == WM_HOTKEY and msg.wParam == self.HOTKEY_ID and self.on_toggle:
-                self.on_toggle()
-            user32.TranslateMessage(ctypes.byref(msg))
-            user32.DispatchMessageW(ctypes.byref(msg))
+            while user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, PM_REMOVE):
+                if msg.message == WM_QUIT:
+                    return
+                if msg.message == WM_HOTKEY and msg.wParam == self.HOTKEY_ID and self.on_toggle:
+                    if not hotkey_pressed:
+                        hotkey_pressed = True
+                        self.on_toggle()
+                user32.TranslateMessage(ctypes.byref(msg))
+                user32.DispatchMessageW(ctypes.byref(msg))
+            if hotkey_pressed and not (user32.GetAsyncKeyState(vk) & 0x8000):
+                hotkey_pressed = False
+            self.stop_event.wait(0.01)
 
 
 class MouseButtonMonitor:
